@@ -1,4 +1,5 @@
-from typing import Callable, Dict, Any
+from typing import Callable, Dict, Any, List
+import string
 
 import torch
 from trlx.data.accelerate_base_datatypes import PromptBatch
@@ -10,7 +11,6 @@ from trlx.pipeline import BasePipeline
 from trlx.pipeline.offline_pipeline import PromptPipeline
 from trlx.utils import Clock
 from trlx.utils.modeling import logprobs_from_logits
-
 
 @register_orchestrator
 class DebateOrchestrator(Orchestrator):
@@ -34,7 +34,7 @@ class DebateOrchestrator(Orchestrator):
         self.rl_model.metric_fn = metric_fn
 
 
-    def make_experience(self, debate_config: Dict[str, Any], num_debates: int = 1024, iter_count: int = 0):
+    def make_experience(self, debate_config: Dict[str, Any], iter_count: int = 0):
         """
         Generates `num_debates` debates between `num_parties` parties for `num_rounds` rounds. Computes rewards for each proposition, packages each proposition experience as a separate PPORLElement, and finally pushes all of them to the store.
         """
@@ -137,5 +137,39 @@ class DebateOrchestrator(Orchestrator):
             "response_tensors": response_tensors,
             "all_logprobs": all_logprobs,
             "all_values": all_values,
-            "all_rewards": all_rewards
+            "all_rewards": all_rewards,
+            "texts": texts
         }
+
+    def rollout_debate(self, debate_config: Dict[str, Any]):
+        texts = create_headers(debate_config)
+        aliases = string.ascii_uppercase[:debate_config["num_parties"]]
+
+        for round in range(debate_config["num_rounds"]):
+            for party in range(debate_config["num_parties"]):
+                texts = [e + f"{aliases[party]}:"]
+                completions = self.ephemeral_generate(texts)
+                completions = [e.split('\n') for e in completions]
+                texts = [e + f + "\n" for e, f in zip(texts, completions)]
+
+        # Generate machine-readable objects
+
+    def create_headers(self, debate_config: Dict[str, Any], aliases: List[str]):
+        # Aliases and "allegiances" between parties are fixed across parallel debates
+        objective_header = "".join([f"{aliases[e]}: {debate_config['objectives'][e]}\n"
+                                     for e in range(debate_config["num_parties"])])
+        objective_header = f"Objectives\n\n{objective_header}---\n"
+
+        # Each debate runs with unique facts
+        fact_prompt = "This is a list of established facts about the world:\n\n1."
+        fact_prompts = [fact_prompt] * debate_config["num_facts"] * debate_config["num_debates"]
+        facts = self.ephemeral_generate(fact_prompts)
+        facts = [e.split('\n')[0] for e in facts]
+        fact_headers = [facts[e * debate_config["num_facts"]:(e + 1) * debate_config["num_facts"]]
+                        for e in range(debate_config["num_debates"])]
+        fact_headers = ["".join(f"- {e}\n" for e in f) for f in fact_headers]
+        fact_headers = [f"Facts\n\n{e}---\n" for e in fact_headers]
+
+        # Combine objective and fact headers
+        headers = [objective_header + e for e in fact_headers]
+        return headers
