@@ -42,7 +42,7 @@ class DebateOrchestrator(Orchestrator):
         stats = {}
         clock = Clock()
 
-        # TODO: Handle rounds (tick!), generate `experiences`
+        experiences = self.rollout_debate(debate_config, clock)
         # TODO: Tack score on final token of each experience
 
         for round in debate_config["num_rounds"]:
@@ -86,7 +86,10 @@ class DebateOrchestrator(Orchestrator):
         pipeline_loader = self.rl_model.accelerator.prepare(pipeline_loader)
         pipeline_iterator = iter(pipeline_loader)
         batch: PromptBatch = next(self.pipeline_iterator)
-        samples = self.rl_model.generate(**batch)
+
+        newline_ids = [[198], [628]]
+        newsent_id = [[13], [0], [30]] # .!?
+        samples = self.rl_model.generate(**batch, bad_words_ids=newline_ids, force_words_ids=newsent_id, max_length=30)
 
         # Wrangle
         query_tensors = batch.input_ids
@@ -141,18 +144,23 @@ class DebateOrchestrator(Orchestrator):
             "texts": texts
         }
 
-    def rollout_debate(self, debate_config: Dict[str, Any]):
+    def rollout_debate(self, debate_config: Dict[str, Any], clock: Clock):
         texts = create_headers(debate_config)
         aliases = string.ascii_uppercase[:debate_config["num_parties"]]
+        experiences = []
 
         for round in range(debate_config["num_rounds"]):
+            round_experiences = []
             for party in range(debate_config["num_parties"]):
-                texts = [e + f"{aliases[party]}:"]
+                texts = [e + f"{aliases[party]}:" for e in texts]
                 completions = self.ephemeral_generate(texts)
-                completions = [e.split('\n') for e in completions]
-                texts = [e + f + "\n" for e, f in zip(texts, completions)]
+                round_experiences += [completions]
+                texts = [e + f + "\n" for e, f in zip(texts, completions["texts"])]
 
-        # Generate machine-readable objects
+            clock.tick()
+            experiences += [round_experiences]
+
+        return experiences, clock
 
     def create_headers(self, debate_config: Dict[str, Any], aliases: List[str]):
         # Aliases and "allegiances" between parties are fixed across parallel debates
@@ -163,7 +171,7 @@ class DebateOrchestrator(Orchestrator):
         # Each debate runs with unique facts
         fact_prompt = "This is a list of established facts about the world:\n\n1."
         fact_prompts = [fact_prompt] * debate_config["num_facts"] * debate_config["num_debates"]
-        facts = self.ephemeral_generate(fact_prompts)
+        facts = self.ephemeral_generate(fact_prompts)["texts"]
         facts = [e.split('\n')[0] for e in facts]
         fact_headers = [facts[e * debate_config["num_facts"]:(e + 1) * debate_config["num_facts"]]
                         for e in range(debate_config["num_debates"])]
