@@ -36,7 +36,7 @@ class DebateOrchestrator(Orchestrator):
 
     def make_experience(self, debate_config: Dict[str, Any], iter_count: int = 0):
         """
-        Generates `num_debates` debates between `num_parties` parties for `num_rounds` rounds. Computes rewards for each proposition, packages each proposition experience as a separate PPORLElement, and finally pushes all of them to the store.
+        Generate debates in parallel following a certain configuration, bundle up the experiences together with associated rewards as PPORLElements, and push them to store.
         """
         ppo_rl_elements = []
         stats = {}
@@ -65,35 +65,44 @@ class DebateOrchestrator(Orchestrator):
 
 
     def default_debate_config(self):
+        """
+        Specify a sensible configuration for the debates.
+        """
         return {
             "num_parties": 3,
-            "num_rounds": 5,
+            "num_rounds": 8,
             "num_facts": 3,
             "objectives": [
-                [1, 0, 0],
-                [0, 1, 0],
+                [1, 0, 0], # A's only interest is futhering its own score
+                [0, 1, 0], # ...
                 [0, 0, 1]
             ]
         }
 
 
     def ephemeral_generate(self, prompts):
+        """
+        Utility function to generate built from original PPOOrchestrator which handles one step of generating rollout from prompts in parallel, including tracking logprobs and KLs.
+        """
         # Generate
         ephemeral_pipeline = PromptPipeline(prompts, self.rl_model.tokenizer)
-        pipeline_loader = ephemeral_pipeline.create_loader(
-            len(prompts), shuffle=True
-        )
+        pipeline_loader = ephemeral_pipeline.create_loader(len(prompts))
         pipeline_loader = self.rl_model.accelerator.prepare(pipeline_loader)
         pipeline_iterator = iter(pipeline_loader)
-        batch: PromptBatch = next(self.pipeline_iterator)
+        batch: PromptBatch = next(pipeline_iterator)
 
         newline_ids = [[198], [628]]
         newsent_id = [[13], [0], [30]] # .!?
-        samples = self.rl_model.generate(**batch, bad_words_ids=newline_ids, force_words_ids=newsent_id, max_length=30)
+        samples = self.rl_model.generate(
+            **batch,
+            bad_words_ids=newline_ids,
+            force_words_ids=newsent_id,
+            max_length=30
+        )
 
         # Wrangle
         query_tensors = batch.input_ids
-        response_tensors = samples[:, query_tensors.shape[1] :]
+        response_tensors = samples[:, query_tensors.shape[1]:]
         texts = self.rl_model.tokenizer.batch_decode(
             samples, skip_special_tokens=True
         )
@@ -144,9 +153,13 @@ class DebateOrchestrator(Orchestrator):
             "texts": texts
         }
 
+
     def rollout_debate(self, debate_config: Dict[str, Any], clock: Clock):
-        texts = create_headers(debate_config)
+        """
+        Systematically generate propositions contributed by alternate parties for a number of rounds while keeping track of everything (e.g. logprobs, KLs, tokens, etc.).
+        """
         aliases = string.ascii_uppercase[:debate_config["num_parties"]]
+        texts = create_headers(debate_config, aliases)
         experiences = []
 
         for round in range(debate_config["num_rounds"]):
@@ -162,7 +175,11 @@ class DebateOrchestrator(Orchestrator):
 
         return experiences, clock
 
+
     def create_headers(self, debate_config: Dict[str, Any], aliases: List[str]):
+        """
+        Generate (partly procedurally) headers prepended to the actual debate content.
+        """
         # Aliases and "allegiances" between parties are fixed across parallel debates
         objective_header = "".join([f"{aliases[e]}: {debate_config['objectives'][e]}\n"
                                      for e in range(debate_config["num_parties"])])
