@@ -12,12 +12,12 @@ from trlx.pipeline.offline_pipeline import PromptPipeline
 from trlx.utils import Clock
 from trlx.utils.modeling import logprobs_from_logits
 
+
 @register_orchestrator
 class DebateOrchestrator(Orchestrator):
     """
     Orchestrator generates debate experience, packages them up in PPORLElements, and pushes them to the store.
     """
-
     def __init__(
         self,
         model: BaseRLModel,
@@ -33,8 +33,9 @@ class DebateOrchestrator(Orchestrator):
         self.rl_model.reward_fn = reward_fn
         self.rl_model.metric_fn = metric_fn
 
-
-    def make_experience(self, debate_config: Dict[str, Any], iter_count: int = 0):
+    def make_experience(self,
+                        debate_config: Dict[str, Any],
+                        iter_count: int = 0):
         """
         Generate debates in parallel following a certain configuration, bundle up the experiences together with associated rewards as PPORLElements, and push them to store.
         """
@@ -43,7 +44,6 @@ class DebateOrchestrator(Orchestrator):
         clock = Clock()
 
         experiences = self.rollout_debate(debate_config, clock)
-        # TODO: Tack score on final token of each experience
 
         for round in debate_config["num_rounds"]:
             es = experiences[round]
@@ -54,8 +54,7 @@ class DebateOrchestrator(Orchestrator):
                     logprobs=es["all_logprobs"][i, :],
                     values=es["all_values"][i, :],
                     rewards=es["all_rewards"][i, :],
-                )
-                for i in range(es["query_tensors"].size()[0])
+                ) for i in range(es["query_tensors"].size()[0])
             ]
 
         ppo_rl_elements += new_ppo_rl_elements
@@ -63,26 +62,27 @@ class DebateOrchestrator(Orchestrator):
         self.rl_model.accelerator.log(stats, step=iter_count)
         self.rl_model.push_to_store(ppo_rl_elements)
 
-
-    def default_debate_config(self):
+    def default_debate_config(self) -> Dict[str, Any]:
         """
         Specify a sensible configuration for the debates.
         """
         return {
-            "num_parties": 3,
-            "num_rounds": 8,
-            "num_facts": 3,
+            "num_parties":
+            3,
+            "num_rounds":
+            8,
+            "num_facts":
+            3,
             "objectives": [
-                [1, 0, 0], # A's only interest is futhering its own score
-                [0, 1, 0], # ...
+                [1, 0, 0],  # A's only interest is furthering its own score.
+                [0, 1, 0],  # ...
                 [0, 0, 1]
             ]
         }
 
-
-    def ephemeral_generate(self, prompts):
+    def ephemeral_generate(self, prompts -> List[str]) -> List[Dict[str, Any]]:
         """
-        Utility function to generate built from original PPOOrchestrator which handles one step of generating rollout from prompts in parallel, including tracking logprobs and KLs.
+        Utility function which handles one step of generating rollout from prompts in parallel, including tracking logprobs and KLs. For the most part lifted from the source code of PPOOrchestrator.
         """
         # Generate
         ephemeral_pipeline = PromptPipeline(prompts, self.rl_model.tokenizer)
@@ -92,23 +92,19 @@ class DebateOrchestrator(Orchestrator):
         batch: PromptBatch = next(pipeline_iterator)
 
         newline_ids = [[198], [628]]
-        newsent_id = [[13], [0], [30]] # .!?
-        samples = self.rl_model.generate(
-            **batch,
-            bad_words_ids=newline_ids,
-            force_words_ids=newsent_id,
-            max_length=30
-        )
+        newsent_id = [[13], [0], [30]]  # .!?
+        samples = self.rl_model.generate(**batch,
+                                         bad_words_ids=newline_ids,
+                                         force_words_ids=newsent_id,
+                                         max_length=30)
 
         # Wrangle
         query_tensors = batch.input_ids
         response_tensors = samples[:, query_tensors.shape[1]:]
-        texts = self.rl_model.tokenizer.batch_decode(
-            samples, skip_special_tokens=True
-        )
+        texts = self.rl_model.tokenizer.batch_decode(samples,
+                                                     skip_special_tokens=True)
         all_tokens = torch.cat(
-            (query_tensors.to(samples.device), response_tensors), dim=1
-        )
+            (query_tensors.to(samples.device), response_tensors), dim=1)
 
         # Handle logprobs
         with torch.no_grad():
@@ -116,16 +112,14 @@ class DebateOrchestrator(Orchestrator):
 
             if hasattr(self.rl_model.model, "frozen_head"):
                 ref_logits = self.rl_model.model.forward_hydra(
-                    all_tokens, return_dict=False
-                )
+                    all_tokens, return_dict=False)
             else:
                 ref_logits, _, _ = self.ref_model(all_tokens.cpu())
 
         ref_logits = ref_logits.to(self.rl_model.accelerator.device)
         logprobs = logprobs_from_logits(logits[:, :-1, :], all_tokens[:, 1:])
-        ref_logprobs = logprobs_from_logits(
-            ref_logits[:, :-1, :], all_tokens[:, 1:]
-        )
+        ref_logprobs = logprobs_from_logits(ref_logits[:, :-1, :],
+                                            all_tokens[:, 1:])
         start = query_tensors.size()[1] - 1
         end = query_tensors.size()[1] + response_tensors.size()[1] - 1
         all_values = v[:, start:end]
@@ -153,8 +147,7 @@ class DebateOrchestrator(Orchestrator):
             "texts": texts
         }
 
-
-    def rollout_debate(self, debate_config: Dict[str, Any], clock: Clock):
+    def rollout_debate(self, debate_config: Dict[str, Any], clock: Clock) -> Tuple[List[Dict[str, Any]], Clock]:
         """
         Systematically generate propositions contributed by alternate parties for a number of rounds while keeping track of everything (e.g. logprobs, KLs, tokens, etc.).
         """
@@ -168,30 +161,39 @@ class DebateOrchestrator(Orchestrator):
                 texts = [e + f"{aliases[party]}:" for e in texts]
                 completions = self.ephemeral_generate(texts)
                 round_experiences += [completions]
-                texts = [e + f + "\n" for e, f in zip(texts, completions["texts"])]
+                texts = [
+                    e + f + "\n" for e, f in zip(texts, completions["texts"])
+                ]
 
             clock.tick()
             experiences += [round_experiences]
 
         return experiences, clock
 
-
-    def create_headers(self, debate_config: Dict[str, Any], aliases: List[str]):
+    def create_headers(self, debate_config: Dict[str, Any],
+                       aliases: List[str]) -> List[str]:
         """
         Generate (partly procedurally) headers prepended to the actual debate content.
         """
         # Aliases and "allegiances" between parties are fixed across parallel debates
-        objective_header = "".join([f"{aliases[e]}: {debate_config['objectives'][e]}\n"
-                                     for e in range(debate_config["num_parties"])])
+        objective_header = "".join([
+            f"{aliases[e]}: {debate_config['objectives'][e]}\n"
+            for e in range(debate_config["num_parties"])
+        ])
         objective_header = f"Objectives\n\n{objective_header}---\n"
 
         # Each debate runs with unique facts
         fact_prompt = "This is a list of established facts about the world:\n\n1."
-        fact_prompts = [fact_prompt] * debate_config["num_facts"] * debate_config["num_debates"]
+        fact_prompts = [
+            fact_prompt
+        ] * debate_config["num_facts"] * debate_config["num_debates"]
         facts = self.ephemeral_generate(fact_prompts)["texts"]
         facts = [e.split('\n')[0] for e in facts]
-        fact_headers = [facts[e * debate_config["num_facts"]:(e + 1) * debate_config["num_facts"]]
-                        for e in range(debate_config["num_debates"])]
+        fact_headers = [
+            facts[e * debate_config["num_facts"]:(e + 1) *
+                  debate_config["num_facts"]]
+            for e in range(debate_config["num_debates"])
+        ]
         fact_headers = ["".join(f"- {e}\n" for e in f) for f in fact_headers]
         fact_headers = [f"Facts\n\n{e}---\n" for e in fact_headers]
 
