@@ -67,6 +67,8 @@ class DebateOrchestrator(Orchestrator):
         Specify a sensible configuration for the debates.
         """
         return {
+            "num_debates":
+            1024,
             "num_parties":
             3,
             "num_rounds":
