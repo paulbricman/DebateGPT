@@ -119,6 +119,9 @@ def compute_pagerank(graphs: List[nx.classes.DiGraph], debate_config: Dict[str, 
 
 
 def compute_mixing(graphs: List[nx.classes.DiGraph], debate_config: Dict[str, Any]) -> List[List[float]]:
+    """
+    Compute assortative mixing of each graph associated with a run.
+    """
     num_props_per_run = debate_config["num_rounds"] * debate_config[
         "num_parties"]
     mixings = []
@@ -131,6 +134,7 @@ def compute_mixing(graphs: List[nx.classes.DiGraph], debate_config: Dict[str, An
         mixings += [nx.attribute_assortativity_coefficient(G, "party")]
 
     return mixings
+
 
 def enrich_experiences(experiences: List[Dict[str,
                                               Any]], scores: List[List[float]],
