@@ -1,5 +1,7 @@
 from typing import Callable, Dict, Any, List
 import string
+import random
+import wandb
 
 import torch
 from trlx.data.accelerate_base_datatypes import PromptBatch
@@ -11,6 +13,7 @@ from trlx.pipeline import BasePipeline
 from trlx.pipeline.offline_pipeline import PromptPipeline
 from trlx.utils import Clock
 from trlx.utils.modeling import logprobs_from_logits
+from src.reward import reward
 
 
 @register_orchestrator
@@ -20,9 +23,7 @@ class DebateOrchestrator(Orchestrator):
     """
     def __init__(
         self,
-        model: BaseRLModel,
-        reward_fn: Callable,
-        metric_fn: Callable = None,
+        model: BaseRLModel
     ):
         self.rl_model = model
 
@@ -30,57 +31,74 @@ class DebateOrchestrator(Orchestrator):
             self.ref_model = self.rl_model.get_arch(self.rl_model.config)
 
         self.rl_model.orch = self
-        self.rl_model.reward_fn = reward_fn
-        self.rl_model.metric_fn = metric_fn
 
     def make_experience(self,
-                        debate_config: Dict[str, Any],
+                        _: Any = None,
                         iter_count: int = 0):
+        clock = Clock()
+        debate_configs = self.default_debate_configs()
+        for debate_config in debate_configs:
+            self.make_experience_type(debate_config, clock)
+
+    def make_experience_type(self, debate_config: Dict[str, Any], clock: Clock):
         """
         Generate debates in parallel following a certain configuration, bundle up the experiences together with associated rewards as PPORLElements, and push them to store.
         """
         ppo_rl_elements = []
         stats = {}
-        clock = Clock()
 
-        experiences = self.rollout_debate(debate_config, clock)
+        experiences = self.rollout_debate(debate_config, clock) # round x party x run
+        experiences, mixings = reward(experiences, debate_config)
 
-        for round in debate_config["num_rounds"]:
-            es = experiences[round]
-            new_ppo_rl_elements = [
-                PPORLElement(
-                    query_tensor=es["query_tensors"][i, :],
-                    response_tensor=es["response_tensors"][i, :],
-                    logprobs=es["all_logprobs"][i, :],
-                    values=es["all_values"][i, :],
-                    rewards=es["all_rewards"][i, :],
-                ) for i in range(es["query_tensors"].size()[0])
-            ]
+        for round_id in range(debate_config["num_rounds"]):
+            for party_id in range(debate_config["num_parties"]):
+                es = experiences[round_id][party_id]
+                new_ppo_rl_elements = [
+                    PPORLElement(
+                        query_tensor=es["query_tensors"][i, :],
+                        response_tensor=es["response_tensors"][i, :],
+                        logprobs=es["all_logprobs"][i, :],
+                        values=es["all_values"][i, :],
+                        rewards=es["all_rewards"][i, :],
+                    ) for i in range(debate_config["num_debates"])
+                ]
 
-        ppo_rl_elements += new_ppo_rl_elements
-        stats = {"exp_time": exp_time}
+                ppo_rl_elements += new_ppo_rl_elements
+
+        stats = {
+            "exp_time": exp_time,
+            "debate_config": debate_config,
+            "sample_experience": experiences[0][0],
+            "assortative_mixing_avg": sum(mixings) / debate_config["num_debates"]
+        }
         self.rl_model.accelerator.log(stats, step=iter_count)
         self.rl_model.push_to_store(ppo_rl_elements)
+        wandb.log(stats)
 
-    def default_debate_config(self) -> Dict[str, Any]:
+    def default_debate_configs(self) -> List[Dict[str, Any]]:
         """
         Specify a sensible configuration for the debates.
         """
-        return {
-            "num_debates":
-            1024,
-            "num_parties":
-            3,
-            "num_rounds":
-            8,
-            "num_facts":
-            3,
-            "objectives": [
-                [1, 0, 0],  # A's only interest is furthering its own score.
-                [0, 1, 0],  # ...
-                [0, 0, 1]
-            ]
-        }
+        num_debate_config_types = 8
+        for id in range(num_debate_config_types):
+            num_parties = random.randint(1, 5)
+            num_facts = random.randint(1, 5)
+            num_rounds = random.randint(5, 10)
+            objectives = (torch.normal(torch.zeros((num_parties, num_parties)), torch.ones((num_parties, num_parties))) * 0.25 + torch.eye(num_parties)).tolist()
+            objectives = [[round(e, 2) for e in f] for f in objectives]
+
+            return {
+                "num_debates":
+                256,
+                "num_parties":
+                num_parties,
+                "num_rounds":
+                num_rounds,
+                "num_facts":
+                num_facts,
+                "objectives":
+                objectives
+            }
 
     def ephemeral_generate(self, prompts -> List[str]) -> List[Dict[str, Any]]:
         """
@@ -170,6 +188,9 @@ class DebateOrchestrator(Orchestrator):
             clock.tick()
             experiences += [round_experiences]
 
+        wandb.log({
+            "sample_debate": texts[0]
+        })
         return experiences, clock
 
     def create_headers(self, debate_config: Dict[str, Any],

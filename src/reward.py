@@ -5,24 +5,26 @@ from transformers import pipeline
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 
 
-def reward(experiences: List[Dict[str, Any]],
-           debate_config: Dict[str, Any]) -> List[Dict[str, Any]]:
+def reward(experiences: List[List[Dict[str, Any]]],
+           debate_config: Dict[str, Any]) -> Tuple[List[Dict[str, Any]], List[float]]:
     """
     Coordinate the enrichment of experiences with rewards. In terms of terminology, reward in this codebase refers to the sum of KL penalties and domain-specific scores. Although the relevant aspects of debate configuration can be inferred from the structure of the `experiences` object, having to include it explicitly makes it clear that they have to share the same structure.
     """
     # Collapse round and party dims into a flattened props dim
     props = []
-    for run in experiences:
-        round_props = []
-        for round in run:
-            for party in round:
-                round_props += [party["props"]]
-        props += [round_props]
+    for run_id in range(debate_config["num_debates"]):
+        run_props = []
+        for round_id in range(debate_config["num_rounds"]):
+            for party_id in range(debate_config["num_parties"]):
+                run_props += [experiences[round_id][party_id]["texts"][run_id]]
+
+        props += [run_props]
 
     graphs = compose_graphs(props)
     scores = compute_pagerank(graphs)
+    mixing = compute_mixing(graphs)
     enriched_es = enrich_experiences(experiences, scores)
-    return enriched_es
+    return enriched_es, mixing
 
 
 def compose_graphs(props: List[List[str]]) -> List[nx.classes.DiGraph]:
@@ -92,14 +94,43 @@ def compute_arc_weights(
     return weighted_edges
 
 
-def compute_pagerank(graphs: List[nx.classes.DiGraph]) -> List[List[float]]:
+def compute_pagerank(graphs: List[nx.classes.DiGraph], debate_config: Dict[str, Any]) -> List[List[float]]:
     """
     Run and wrangle data for PageRank on each graph representing a run.
     """
     pageranks = [nx.pagerank(e) for e in graphs]
     pageranks = [list(e.values()) for e in pageranks]
-    return pageranks
 
+    scores = []
+    for run in pageranks:
+        party_avgs = []
+        for party in range(debate_config["num_parties"]):
+            party_sum = sum([run[party + round_id * debate_config["num_parties"] for round_id in range(debate_config["num_rounds"])])
+            party_avg = party_sum / debate_config["num_rounds"]
+            party_avgs += [party_avg]
+
+        objectives = torch.Tensor(debate_config["objectives"])
+        party_avgs = torch.Tensor(party_avgs)
+        adjusted_party_scores = ((party_avgs @ objectives).tolist))
+
+        scores += [adjusted_party_scores * debate_config["num_rounds"]]
+
+    return scores
+
+
+def compute_mixing(graphs: List[nx.classes.DiGraph], debate_config: Dict[str, Any]) -> List[List[float]]:
+    num_props_per_run = debate_config["num_rounds"] * debate_config[
+        "num_parties"]
+    mixings = []
+    for G in graphs:
+        # Assign parties as node attributes
+        for party_id in range(debate_config["num_parties"]):
+            for round_id in range(debate_config["num_rounds"]):
+                prop_id = party_id + round_id * debate_config["num_parties"]
+                G.nodes[prop_id]["party"] = party
+        mixings += [nx.attribute_assortativity_coefficient(G, "party")]
+
+    return mixings
 
 def enrich_experiences(experiences: List[Dict[str,
                                               Any]], scores: List[List[float]],
@@ -107,11 +138,11 @@ def enrich_experiences(experiences: List[Dict[str,
     """
     Tack scores on the final token of each experience.
     """
-    for run_id, run in enumerate(experiences):
-        for round_id, round in enumerate(run):
-            for party_id, party in enumerate(round):
+    for run_id in range(debate_config["num_debates"]):
+        for round_id in range(debate_config["num_rounds"]):
+            for party_id in range(debate_config["num_parties"]):
                 prop_id = round_id * debate_config["num_parties"] + party
-                experiences[run_id][round_id][party_id]["all_rewards"][
-                    -1] = scores[run_id][prop_id]
+                experiences[round_id][party_id]["all_rewards"][run_id][-1] += scores[run_id][prop_id]
+                experiences[round_id][party_id]["scores"][run_id][-1] = scores[run_id][prop_id]
 
     return experiences
