@@ -5,7 +5,7 @@ model:
   num_layers_unfrozen: 2  # Number of bottom layers to freeze during training
 
 train:
-  seq_length: 48  # Size of LM context
+  seq_length: 1024  # Size of LM context
   epochs: 1000  # Train for max(epochs, total_steps)
   total_steps: 10000  # Train for max(epochs, total_steps)
   batch_size: 128  # batch size
@@ -18,6 +18,10 @@ train:
 
   checkpoint_interval: 10000  # checkpoint interval
   eval_interval: 16  # eval interval
+
+  # Does adding the below break things?
+  pipeline: "PPOPipeline"  # prompt pipeline to load
+  orchestrator: "PPOOrchestrator"  # orchestrator to load
 
 method:
   name: 'ppoconfig'  # Name of RL method config
@@ -33,8 +37,5 @@ method:
   cliprange_value: 0.2  # clip range
   vf_coef: 2.3  # value term weight
   gen_kwargs:
-    max_length: 48  # LM max sample gen length
-    min_length: 48  # LM min sample gen length
-    top_k: 0.0  # top k
-    top_p: 1.0  # top p
-    do_sample: True  # sample
+    max_new_tokens: 30
+    no_repeat_ngram_size: 3

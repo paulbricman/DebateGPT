@@ -15,7 +15,7 @@ from trlx.utils.loading import get_model, get_orchestrator
 from src.orchestrator import DebateOrchestrator
 
 
-def train():
+def train() -> AcceleratePPOModel:
     """
     Dispatches debate fine-tuning in an online fashion through the custom orchestrator.
     """

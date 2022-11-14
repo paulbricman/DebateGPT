@@ -1,8 +1,7 @@
-from typing import Callable, Dict, Any, List
+from typing import Callable, Dict, Any, List, Tuple
 import string
 import random
 import wandb
-
 import torch
 from trlx.data.accelerate_base_datatypes import PromptBatch
 from trlx.data.ppo_types import PPORLElement
@@ -16,7 +15,6 @@ from trlx.utils.modeling import logprobs_from_logits
 from src.reward import reward
 
 
-@register_orchestrator
 class DebateOrchestrator(Orchestrator):
     """
     Orchestrator generates debate experience, packages them up in PPORLElements, and pushes them to the store.
@@ -80,6 +78,8 @@ class DebateOrchestrator(Orchestrator):
         Specify a sensible configuration for the debates.
         """
         num_debate_config_types = 8
+        debate_configs = []
+
         for id in range(num_debate_config_types):
             num_parties = random.randint(1, 5)
             num_facts = random.randint(1, 5)
@@ -87,7 +87,7 @@ class DebateOrchestrator(Orchestrator):
             objectives = (torch.normal(torch.zeros((num_parties, num_parties)), torch.ones((num_parties, num_parties))) * 0.25 + torch.eye(num_parties)).tolist()
             objectives = [[round(e, 2) for e in f] for f in objectives]
 
-            return {
+            debate_configs += [{
                 "num_debates":
                 256,
                 "num_parties":
@@ -98,13 +98,16 @@ class DebateOrchestrator(Orchestrator):
                 num_facts,
                 "objectives":
                 objectives
-            }
+            }]
 
-    def ephemeral_generate(self, prompts -> List[str]) -> List[Dict[str, Any]]:
+        return debate_configs
+
+    def ephemeral_generate(self, prompts: List[str], beams=True) -> List[Dict[str, Any]]:
         """
         Utility function which handles one step of generating rollout from prompts in parallel, including tracking logprobs and KLs. For the most part lifted from the source code of PPOOrchestrator.
         """
         # Generate
+        self.rl_model.tokenizer.truncation = True
         ephemeral_pipeline = PromptPipeline(prompts, self.rl_model.tokenizer)
         pipeline_loader = ephemeral_pipeline.create_loader(len(prompts))
         pipeline_loader = self.rl_model.accelerator.prepare(pipeline_loader)
@@ -112,16 +115,23 @@ class DebateOrchestrator(Orchestrator):
         batch: PromptBatch = next(pipeline_iterator)
 
         newline_ids = [[198], [628]]
-        newsent_id = [[13], [0], [30]]  # .!?
-        samples = self.rl_model.generate(**batch,
-                                         bad_words_ids=newline_ids,
-                                         force_words_ids=newsent_id,
-                                         max_length=30)
+        newsent_id = [[13]]  # .
+        if beams:
+            samples = self.rl_model.generate(**batch,
+                                             bad_words_ids=newline_ids,
+                                             force_words_ids=newsent_id,
+                                             num_beams=2, # TODO: increase after tests
+                                             )
+        else:
+            samples = self.rl_model.generate(**batch,
+                                             do_sample=True,
+                                             num_beams=1,
+                                             )
 
         # Wrangle
         query_tensors = batch.input_ids
         response_tensors = samples[:, query_tensors.shape[1]:]
-        texts = self.rl_model.tokenizer.batch_decode(samples,
+        texts = self.rl_model.tokenizer.batch_decode(response_tensors,
                                                      skip_special_tokens=True)
         all_tokens = torch.cat(
             (query_tensors.to(samples.device), response_tensors), dim=1)
@@ -172,7 +182,7 @@ class DebateOrchestrator(Orchestrator):
         Systematically generate propositions contributed by alternate parties for a number of rounds while keeping track of everything (e.g. logprobs, KLs, tokens, etc.).
         """
         aliases = string.ascii_uppercase[:debate_config["num_parties"]]
-        texts = create_headers(debate_config, aliases)
+        texts, facts = self.create_headers(debate_config, aliases)
         experiences = []
 
         for round in range(debate_config["num_rounds"]):
@@ -194,7 +204,7 @@ class DebateOrchestrator(Orchestrator):
         return experiences, clock
 
     def create_headers(self, debate_config: Dict[str, Any],
-                       aliases: List[str]) -> List[str]:
+                       aliases: List[str]) -> Tuple[List[str], List[List[str]]]:
         """
         Generate (partly procedurally) headers prepended to the actual debate content.
         """
@@ -210,16 +220,17 @@ class DebateOrchestrator(Orchestrator):
         fact_prompts = [
             fact_prompt
         ] * debate_config["num_facts"] * debate_config["num_debates"]
-        facts = self.ephemeral_generate(fact_prompts)["texts"]
-        facts = [e.split('\n')[0] for e in facts]
+        facts = self.ephemeral_generate(fact_prompts, beams=False)["texts"]
+        facts = [e[len(fact_prompt):].split("\n")[0].strip() for e in facts]
         fact_headers = [
             facts[e * debate_config["num_facts"]:(e + 1) *
                   debate_config["num_facts"]]
             for e in range(debate_config["num_debates"])
         ]
+        raw_facts = fact_headers
         fact_headers = ["".join(f"- {e}\n" for e in f) for f in fact_headers]
-        fact_headers = [f"Facts\n\n{e}---\n" for e in fact_headers]
+        fact_headers = [f"Facts\n\n{e}---Debate\n\n" for e in fact_headers]
 
         # Combine objective and fact headers
         headers = [objective_header + e for e in fact_headers]
-        return headers
+        return headers, raw_facts
