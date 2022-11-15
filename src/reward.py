@@ -1,3 +1,4 @@
+import torch
 from typing import Dict, Any, List, Tuple
 import networkx as nx
 from accelerate import Accelerator
@@ -50,46 +51,34 @@ def compute_arc_weights(
     """
     Run pairs of props through NLI pipeline to compute arc weights for each graph. The predefined zero-shot text classification is used due to it conveniently wrapping NLI-related logic , although its original goal was to be used in a different application.
     """
-    paired_props = []
-    for run in props:
-        paired_props += [(e, f) for e in run for f in run if e != f]
-
-    sequences = [e[0] for e in paired_props]
-    candidates = [[e[1]] for e in paired_props]
-
     # Parallelization approach uses models prepared by accelerate. Alternatively, create one pipeline per device and handle dispatch manually. Alternatively, scrape all of that and just fallback to a single pipeline on one GPU, as it would be simple despite not efficient.
     model = AutoModelForSequenceClassification.from_pretrained(
-        'cross-encoder/nli-deberta-v3-base')
+        'cross-encoder/nli-deberta-v3-xsmall') # TODO: Increase to base after testing
     tokenizer = AutoTokenizer.from_pretrained(
-        'cross-encoder/nli-deberta-v3-base')
-    model, optimizer = accelerator.prepare(model)
-    nli_pipe = pipeline("zero-shot-classification", model=model)
-    scores = nli_pipe(sequences,
-                      candidates,
-                      multi_label=True,
-                      hypothesis_template="{}")["scores"]
+        'cross-encoder/nli-deberta-v3-xsmall')
+    # Note: UserWarning: The sentencepiece tokenizer that you are converting to a fast tokenizer uses the byte fallback option which is not implemented in the fast tokenizers. In practice this means that the fast version of the tokenizer can produce unknown tokens whereas the sentencepiece version would have converted these unknown tokens into a sequence of byte tokens matching the original piece of text.
+    accelerator = Accelerator()
+    model = accelerator.prepare(model)
+    nli_pipe = pipeline("zero-shot-classification", model=model, tokenizer=tokenizer)
+    num_props_per_debate = debate_config["num_parties"] * debate_config["num_rounds"]
 
     weighted_edges = []
-    num_props_per_run = debate_config["num_rounds"] * debate_config[
-        "num_parties"]
-    num_pairs_per_run = num_props_per_run * (num_props_per_run - 1
-                                             )  # No node self-ref.
-    for run_id in range(debate_config["num_debates"]):
-        run_weighted_edges = []
-        run_start = run_id * num_pairs_per_run
-        run_end = run_start + num_pairs_per_run
-        for prop_id in range(num_props_per_run):
-            for pair_id in range(number_props_per_run - 1):
-                # Skip self-ref arc.
-                effective_target_id = pair_id
-                if effective_target >= prop_id:
-                    effective_target += 1
+    for run in props:
+        run_scores = nli_pipe(
+            run,
+            run,
+            multi_label=True,
+            hypothesis_template="{}")
 
-                pair_abs_id = run_start + prop_id * (num_props_per_run -
-                                                     1) + pair_id
-                run_weighted_edges += [(prop_id, effective_target_id,
-                                        scores[pair_abs_id])]
-        weighted_edges += [run_weighted_edges]
+        print(props)
+        run_weights = []
+        for outbound_id in range(num_props_per_debate):
+            for inbound_id in range(num_props_per_debate):
+                print(len(props[0]), outbound_id, len(run_scores), inbound_id, len(run_scores[0]["scores"]))
+                if outbound_id != inbound_id:
+                    run_weights += [(outbound_id, inbound_id, round(run_scores[outbound_id]["scores"][inbound_id], 2))]
+
+        weighted_edges += [run_weights]
 
     return weighted_edges
 
@@ -126,11 +115,19 @@ def compute_mixing(graphs: List[nx.classes.DiGraph], debate_config: Dict[str, An
         "num_parties"]
     mixings = []
     for G in graphs:
+        # Discretize edges using mean as threshold
+        G = G.copy()
+        weights = [e[2] for e in G.edges.data("weight")]
+        threshold = sum(weights) / len(weights)
+        long_edges = list(filter(lambda e: e[2] < threshold, (e for e in G.edges.data('weight'))))
+        le_ids = list(e[:2] for e in long_edges)
+        G.remove_edges_from(le_ids)
+
         # Assign parties as node attributes
         for party_id in range(debate_config["num_parties"]):
             for round_id in range(debate_config["num_rounds"]):
                 prop_id = party_id + round_id * debate_config["num_parties"]
-                G.nodes[prop_id]["party"] = party
+                G.nodes[prop_id]["party"] = party_id
         mixings += [nx.attribute_assortativity_coefficient(G, "party")]
 
     return mixings
@@ -142,11 +139,12 @@ def enrich_experiences(experiences: List[Dict[str,
     """
     Tack scores on the final token of each experience.
     """
+    experiences = experiences.copy()
     for run_id in range(debate_config["num_debates"]):
         for round_id in range(debate_config["num_rounds"]):
             for party_id in range(debate_config["num_parties"]):
-                prop_id = round_id * debate_config["num_parties"] + party
+                prop_id = round_id * debate_config["num_parties"] + party_id
                 experiences[round_id][party_id]["all_rewards"][run_id][-1] += scores[run_id][prop_id]
-                experiences[round_id][party_id]["scores"][run_id][-1] = scores[run_id][prop_id]
+                experiences[round_id][party_id]["scores"] += [scores[run_id][prop_id]]
 
     return experiences

@@ -174,7 +174,8 @@ class DebateOrchestrator(Orchestrator):
             "all_logprobs": all_logprobs,
             "all_values": all_values,
             "all_rewards": all_rewards,
-            "texts": texts
+            "texts": texts,
+            "scores": [],
         }
 
     def rollout_debate(self, debate_config: Dict[str, Any], clock: Clock) -> Tuple[List[Dict[str, Any]], Clock]:
