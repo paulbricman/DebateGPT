@@ -43,7 +43,7 @@ class DebateOrchestrator(Orchestrator):
 
         experiences, facts, texts, clock = self.rollout_debate(debate_config,
                                           clock)
-        experiences, mixings = reward(experiences, debate_config)
+        experiences, mixings = reward(experiences, facts, debate_config)
 
         for round_id in range(debate_config["num_rounds"]):
             for party_id in range(debate_config["num_parties"]):

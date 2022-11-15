@@ -40,7 +40,7 @@ def ddc():
         "num_debates": 2,
         "num_parties": 3,
         "num_rounds": 2,
-        "num_facts": 2,
+        "num_facts": 3,
         "objectives": [
             [1, 0, 0],
             [0, 1, 0],
@@ -68,6 +68,16 @@ def dummy_props():
         "Longtermism explores the idea of taking into account the well-being of future people."
     ]
     return [props, props.copy()]
+
+
+@pytest.fixture
+def dummy_facts():
+    facts = [
+        "Longtermism is a philosophy.",
+        "It is likely that many people will live in the future.",
+        "It's more certain that there are people alive today than in the future."
+    ]
+    return [facts, facts.copy()]
 
 
 def test_compute_pagerank(dummy_graphs: List[Any], ddc: Dict[str, Any]):
@@ -99,17 +109,17 @@ def test_enrich_experiences(ddc: Dict[str, Any], orch: DebateOrchestrator,
     ) == initial_final_reward + pageranks[0][0]
 
 
-def test_compute_arc_weights(dummy_props: List[List[str]], ddc: Dict[str,
+def test_compute_arc_weights(dummy_props: List[List[str]], dummy_facts: List[List[str]], ddc: Dict[str,
                                                                      Any]):
-    weights = compute_arc_weights(dummy_props, ddc)
+    weights = compute_arc_weights(dummy_props, dummy_facts, ddc)
 
     assert len(weights) == len(dummy_props)
-    assert len(weights[0]) == len(dummy_props[0]) * (len(dummy_props[0]) - 1)
+    assert len(weights[0]) == len(dummy_props[0]) * (len(dummy_props[0]) - 1) + len(dummy_props[0]) * len(dummy_facts[0])
     assert all([e[2] <= 1. and e[2] >= 0. for e in weights[0]])
 
 
-def test_compute_graphs(dummy_props: List[List[str]], ddc: Dict[str, Any]):
-    graphs = compose_graphs(dummy_props, ddc)
+def test_compute_graphs(dummy_props: List[List[str]], dummy_facts: List[List[str]], ddc: Dict[str, Any]):
+    graphs = compose_graphs(dummy_props, dummy_facts, ddc)
 
-    assert len(graphs[0].nodes) == len(dummy_props[0])
-    assert len(graphs[0].edges) == len(dummy_props[0]) * (len(dummy_props[0]) - 1)
+    assert len(graphs[0].nodes) == len(dummy_props[0]) + len(dummy_facts[0])
+    assert len(graphs[0].edges) == len(dummy_props[0]) * (len(dummy_props[0]) - 1) + len(dummy_props[0]) * len(dummy_facts[0])

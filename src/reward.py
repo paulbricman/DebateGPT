@@ -6,7 +6,7 @@ from transformers import pipeline
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 
 
-def reward(experiences: List[List[Dict[str, Any]]],
+def reward(experiences: List[List[Dict[str, Any]]], facts: List[List[str]],
            debate_config: Dict[str, Any]) -> Tuple[List[Dict[str, Any]], List[float]]:
     """
     Coordinate the enrichment of experiences with rewards. In terms of terminology, reward in this codebase refers to the sum of KL penalties and domain-specific scores. Although the relevant aspects of debate configuration can be inferred from the structure of the `experiences` object, having to include it explicitly makes it clear that they have to share the same structure.
@@ -21,21 +21,21 @@ def reward(experiences: List[List[Dict[str, Any]]],
 
         props += [run_props]
 
-    graphs = compose_graphs(props)
+    graphs = compose_graphs(props, facts)
     scores = compute_pagerank(graphs)
     mixing = compute_mixing(graphs)
     enriched_es = enrich_experiences(experiences, scores)
     return enriched_es, mixing
 
 
-def compose_graphs(props: List[List[str]], debate_config: Dict[str, Any]) -> List[nx.classes.DiGraph]:
+def compose_graphs(props: List[List[str]], facts: List[List[str]], debate_config: Dict[str, Any]) -> List[nx.classes.DiGraph]:
     """
     Compose a weighted directed graph using networkx where nodes represent propositions and arc represent relations of support between them.
     """
     assert all([len(e) == len(props[0])
                 for e in props]), "Runs differ in num_props!"
 
-    weights = compute_arc_weights(props, debate_config)
+    weights = compute_arc_weights(props, facts, debate_config)
     graphs = []
     for run_id in range(len(props)):
         D = nx.DiGraph()
@@ -47,6 +47,7 @@ def compose_graphs(props: List[List[str]], debate_config: Dict[str, Any]) -> Lis
 
 def compute_arc_weights(
         props: List[List[str]],
+        facts: List[List[str]],
         debate_config: Dict[str, Any]) -> List[List[Tuple[int, int, float]]]:
     """
     Run pairs of props through NLI pipeline to compute arc weights for each graph. The predefined zero-shot text classification is used due to it conveniently wrapping NLI-related logic , although its original goal was to be used in a different application.
@@ -61,19 +62,20 @@ def compute_arc_weights(
     model = accelerator.prepare(model)
     nli_pipe = pipeline("zero-shot-classification", model=model, tokenizer=tokenizer)
     num_props_per_debate = debate_config["num_parties"] * debate_config["num_rounds"]
+    num_items_per_debate = num_props_per_debate  + debate_config["num_facts"]
 
     weighted_edges = []
-    for run in props:
+    for run_props, run_facts in zip(props, facts):
         run_scores = nli_pipe(
-            run,
-            run,
+            run_props + run_facts,
+            run_props + run_facts,
             multi_label=True,
             hypothesis_template="{}")
 
         run_weights = []
-        for outbound_id in range(num_props_per_debate):
-            for inbound_id in range(num_props_per_debate):
-                if outbound_id != inbound_id:
+        for outbound_id in range(num_items_per_debate):
+            for inbound_id in range(num_items_per_debate):
+                if outbound_id != inbound_id and inbound_id < num_props_per_debate:
                     run_weights += [(outbound_id, inbound_id, round(run_scores[outbound_id]["scores"][inbound_id], 2))]
 
         weighted_edges += [run_weights]
