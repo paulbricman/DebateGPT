@@ -28,16 +28,16 @@ def reward(experiences: List[List[Dict[str, Any]]],
     return enriched_es, mixing
 
 
-def compose_graphs(props: List[List[str]]) -> List[nx.classes.DiGraph]:
+def compose_graphs(props: List[List[str]], debate_config: Dict[str, Any]) -> List[nx.classes.DiGraph]:
     """
     Compose a weighted directed graph using networkx where nodes represent propositions and arc represent relations of support between them.
     """
     assert all([len(e) == len(props[0])
                 for e in props]), "Runs differ in num_props!"
 
-    weights = compute_arc_weights(props)
+    weights = compute_arc_weights(props, debate_config)
     graphs = []
-    for run_id in range(props):
+    for run_id in range(len(props)):
         D = nx.DiGraph()
         D.add_weighted_edges_from(weights[run_id])
         graphs += [D]
@@ -70,11 +70,9 @@ def compute_arc_weights(
             multi_label=True,
             hypothesis_template="{}")
 
-        print(props)
         run_weights = []
         for outbound_id in range(num_props_per_debate):
             for inbound_id in range(num_props_per_debate):
-                print(len(props[0]), outbound_id, len(run_scores), inbound_id, len(run_scores[0]["scores"]))
                 if outbound_id != inbound_id:
                     run_weights += [(outbound_id, inbound_id, round(run_scores[outbound_id]["scores"][inbound_id], 2))]
 
