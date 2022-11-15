@@ -19,10 +19,7 @@ class DebateOrchestrator(Orchestrator):
     """
     Orchestrator generates debate experience, packages them up in PPORLElements, and pushes them to the store.
     """
-    def __init__(
-        self,
-        model: BaseRLModel
-    ):
+    def __init__(self, model: BaseRLModel):
         self.rl_model = model
 
         if not hasattr(self.rl_model.model, "frozen_head"):
@@ -30,22 +27,22 @@ class DebateOrchestrator(Orchestrator):
 
         self.rl_model.orch = self
 
-    def make_experience(self,
-                        _: Any = None,
-                        iter_count: int = 0):
+    def make_experience(self, _: Any = None, iter_count: int = 0):
         clock = Clock()
         debate_configs = self.default_debate_configs()
         for debate_config in debate_configs:
             self.make_experience_type(debate_config, clock)
 
-    def make_experience_type(self, debate_config: Dict[str, Any], clock: Clock):
+    def make_experience_type(self, debate_config: Dict[str, Any],
+                             clock: Clock):
         """
         Generate debates in parallel following a certain configuration, bundle up the experiences together with associated rewards as PPORLElements, and push them to store.
         """
         ppo_rl_elements = []
         stats = {}
 
-        experiences = self.rollout_debate(debate_config, clock) # round x party x run
+        experiences = self.rollout_debate(debate_config,
+                                          clock)  # round x party x run
         experiences, mixings = reward(experiences, debate_config)
 
         for round_id in range(debate_config["num_rounds"]):
@@ -67,7 +64,8 @@ class DebateOrchestrator(Orchestrator):
             "exp_time": exp_time,
             "debate_config": debate_config,
             "sample_experience": experiences[0][0],
-            "assortative_mixing_avg": sum(mixings) / debate_config["num_debates"]
+            "assortative_mixing_avg":
+            sum(mixings) / debate_config["num_debates"]
         }
         self.rl_model.accelerator.log(stats, step=iter_count)
         self.rl_model.push_to_store(ppo_rl_elements)
@@ -84,49 +82,51 @@ class DebateOrchestrator(Orchestrator):
             num_parties = random.randint(1, 5)
             num_facts = random.randint(1, 5)
             num_rounds = random.randint(5, 10)
-            objectives = (torch.normal(torch.zeros((num_parties, num_parties)), torch.ones((num_parties, num_parties))) * 0.25 + torch.eye(num_parties)).tolist()
+            objectives = (torch.normal(torch.zeros(
+                (num_parties,
+                 num_parties)), torch.ones(
+                     (num_parties, num_parties))) * 0.25 +
+                          torch.eye(num_parties)).tolist()
             objectives = [[round(e, 2) for e in f] for f in objectives]
 
             debate_configs += [{
-                "num_debates":
-                256,
-                "num_parties":
-                num_parties,
-                "num_rounds":
-                num_rounds,
-                "num_facts":
-                num_facts,
-                "objectives":
-                objectives
+                "num_debates": 256,
+                "num_parties": num_parties,
+                "num_rounds": num_rounds,
+                "num_facts": num_facts,
+                "objectives": objectives
             }]
 
         return debate_configs
 
-    def ephemeral_generate(self, prompts: List[str], beams=True) -> List[Dict[str, Any]]:
+    def ephemeral_generate(self,
+                           prompts: List[str],
+                           beams=True) -> List[Dict[str, Any]]:
         """
         Utility function which handles one step of generating rollout from prompts in parallel, including tracking logprobs and KLs. For the most part lifted from the source code of PPOOrchestrator.
         """
-        # Generate
-        self.rl_model.tokenizer.truncation = True
-        ephemeral_pipeline = PromptPipeline(prompts, self.rl_model.tokenizer)
-        pipeline_loader = ephemeral_pipeline.create_loader(len(prompts))
-        pipeline_loader = self.rl_model.accelerator.prepare(pipeline_loader)
-        pipeline_iterator = iter(pipeline_loader)
-        batch: PromptBatch = next(pipeline_iterator)
+        batch = self.rl_model.tokenizer(
+            prompts,
+            truncation=True,
+            padding=True,
+            return_tensors="pt",
+            max_length=self.rl_model.config.train.seq_length)
 
         newline_ids = [[198], [628]]
         newsent_id = [[13]]  # .
         if beams:
-            samples = self.rl_model.generate(**batch,
-                                             bad_words_ids=newline_ids,
-                                             force_words_ids=newsent_id,
-                                             num_beams=2, # TODO: increase after tests
-                                             )
+            samples = self.rl_model.generate(
+                **batch,
+                bad_words_ids=newline_ids,
+                force_words_ids=newsent_id,
+                num_beams=2,  # TODO: increase after tests
+            )
         else:
-            samples = self.rl_model.generate(**batch,
-                                             do_sample=True,
-                                             num_beams=1,
-                                             )
+            samples = self.rl_model.generate(
+                **batch,
+                do_sample=True,
+                num_beams=1,
+            )
 
         # Wrangle
         query_tensors = batch.input_ids
@@ -178,7 +178,8 @@ class DebateOrchestrator(Orchestrator):
             "scores": [],
         }
 
-    def rollout_debate(self, debate_config: Dict[str, Any], clock: Clock) -> Tuple[List[Dict[str, Any]], Clock]:
+    def rollout_debate(self, debate_config: Dict[str, Any],
+                       clock: Clock) -> Tuple[List[Dict[str, Any]], Clock]:
         """
         Systematically generate propositions contributed by alternate parties for a number of rounds while keeping track of everything (e.g. logprobs, KLs, tokens, etc.).
         """
@@ -199,13 +200,12 @@ class DebateOrchestrator(Orchestrator):
             clock.tick()
             experiences += [round_experiences]
 
-        wandb.log({
-            "sample_debate": texts[0]
-        })
+        wandb.log({"sample_debate": texts[0]})
         return experiences, clock
 
-    def create_headers(self, debate_config: Dict[str, Any],
-                       aliases: List[str]) -> Tuple[List[str], List[List[str]]]:
+    def create_headers(
+            self, debate_config: Dict[str, Any],
+            aliases: List[str]) -> Tuple[List[str], List[List[str]]]:
         """
         Generate (partly procedurally) headers prepended to the actual debate content.
         """
