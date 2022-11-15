@@ -1,15 +1,11 @@
-from typing import Callable, Dict, Any, List, Tuple
+from typing import Any, Dict, List, Tuple
 import string
 import random
 import wandb
 import torch
-from trlx.data.accelerate_base_datatypes import PromptBatch
 from trlx.data.ppo_types import PPORLElement
 from trlx.model import BaseRLModel
-from trlx.model.nn.ppo_models import GPTHeadWithValueModel, GPTHydraHeadWithValueModel
-from trlx.orchestrator import Orchestrator, register_orchestrator
-from trlx.pipeline import BasePipeline
-from trlx.pipeline.offline_pipeline import PromptPipeline
+from trlx.orchestrator import Orchestrator
 from trlx.utils import Clock
 from trlx.utils.modeling import logprobs_from_logits
 from src.reward import reward
@@ -74,6 +70,9 @@ class DebateOrchestrator(Orchestrator):
     def default_debate_configs(self) -> List[Dict[str, Any]]:
         """
         Specify a sensible configuration for the debates.
+
+        Returns:
+            List of debate configs
         """
         num_debate_config_types = 8
         debate_configs = []
@@ -101,9 +100,12 @@ class DebateOrchestrator(Orchestrator):
 
     def ephemeral_generate(self,
                            prompts: List[str],
-                           beams=True) -> List[Dict[str, Any]]:
+                           beams=True) -> Dict[str, Any]:
         """
         Utility function which handles one step of generating rollout from prompts in parallel, including tracking logprobs and KLs. For the most part lifted from the source code of PPOOrchestrator.
+
+        Returns:
+            An experience
         """
         batch = self.rl_model.tokenizer(
             prompts,
@@ -179,9 +181,15 @@ class DebateOrchestrator(Orchestrator):
         }
 
     def rollout_debate(self, debate_config: Dict[str, Any],
-                       clock: Clock) -> Tuple[List[Dict[str, Any]], List[List[str]], List[str], Clock]:
+                       clock: Clock) -> Tuple[List[List[Dict[str, Any]]], List[List[str]], List[str], Clock]:
         """
         Systematically generate propositions contributed by alternate parties for a number of rounds while keeping track of everything (e.g. logprobs, KLs, tokens, etc.).
+
+        Returns:
+            List of lists of experiences (round x party)
+            List of lists of facts (run)
+            List of debate transcripts
+            Clock
         """
         aliases = string.ascii_uppercase[:debate_config["num_parties"]]
         texts, facts = self.create_headers(debate_config, aliases)
@@ -208,6 +216,10 @@ class DebateOrchestrator(Orchestrator):
             aliases: List[str]) -> Tuple[List[str], List[List[str]]]:
         """
         Generate (partly procedurally) headers prepended to the actual debate content.
+
+        Returns:
+            List of headers (run)
+            List of lists of facts (run)
         """
         # Aliases and "allegiances" between parties are fixed across parallel debates
         objective_header = "".join([

@@ -7,9 +7,13 @@ from transformers import AutoTokenizer, AutoModelForSequenceClassification
 
 
 def reward(experiences: List[List[Dict[str, Any]]], facts: List[List[str]],
-           debate_config: Dict[str, Any]) -> Tuple[List[Dict[str, Any]], List[float]]:
+           debate_config: Dict[str, Any]) -> Tuple[List[List[Dict[str, Any]]], List[float]]:
     """
     Coordinate the enrichment of experiences with rewards. In terms of terminology, reward in this codebase refers to the sum of KL penalties and domain-specific scores. Although the relevant aspects of debate configuration can be inferred from the structure of the `experiences` object, having to include it explicitly makes it clear that they have to share the same structure.
+
+    Returns:
+        List of enriched experiences (round x party)
+        Assortative mixing values (run)
     """
     # Collapse round and party dims into a flattened props dim
     props = []
@@ -31,6 +35,9 @@ def reward(experiences: List[List[Dict[str, Any]]], facts: List[List[str]],
 def compose_graphs(props: List[List[str]], facts: List[List[str]], debate_config: Dict[str, Any]) -> List[nx.classes.DiGraph]:
     """
     Compose a weighted directed graph using networkx where nodes represent propositions and arc represent relations of support between them.
+
+    Returns:
+        Composed graphs
     """
     assert all([len(e) == len(props[0])
                 for e in props]), "Runs differ in num_props!"
@@ -51,6 +58,9 @@ def compute_arc_weights(
         debate_config: Dict[str, Any]) -> List[List[Tuple[int, int, float]]]:
     """
     Run pairs of props through NLI pipeline to compute arc weights for each graph. The predefined zero-shot text classification is used due to it conveniently wrapping NLI-related logic , although its original goal was to be used in a different application.
+
+    Returns:
+        List of lists of outbound-inbound-weight triples defining arcs (run x weight)
     """
     # Parallelization approach uses models prepared by accelerate. Alternatively, create one pipeline per device and handle dispatch manually. Alternatively, scrape all of that and just fallback to a single pipeline on one GPU, as it would be simple despite not efficient.
     model = AutoModelForSequenceClassification.from_pretrained(
@@ -86,6 +96,9 @@ def compute_arc_weights(
 def compute_pagerank(graphs: List[nx.classes.DiGraph], debate_config: Dict[str, Any]) -> List[List[float]]:
     """
     Run and wrangle data for PageRank on each graph representing a run.
+
+    Returns:
+        List of lists of pagerank scores for propositions (run x prop)
     """
     pageranks = [nx.pagerank(e) for e in graphs]
     pageranks = [list(e.values()) for e in pageranks]
@@ -107,9 +120,12 @@ def compute_pagerank(graphs: List[nx.classes.DiGraph], debate_config: Dict[str, 
     return scores
 
 
-def compute_mixing(graphs: List[nx.classes.DiGraph], debate_config: Dict[str, Any]) -> List[List[float]]:
+def compute_mixing(graphs: List[nx.classes.DiGraph], debate_config: Dict[str, Any]) -> List[float]:
     """
     Compute assortative mixing of each graph associated with a run.
+
+    Returns:
+        List of lists of assortative mixing values (run)
     """
     num_props_per_run = debate_config["num_rounds"] * debate_config[
         "num_parties"]
@@ -133,11 +149,15 @@ def compute_mixing(graphs: List[nx.classes.DiGraph], debate_config: Dict[str, An
     return mixings
 
 
-def enrich_experiences(experiences: List[Dict[str,
-                                              Any]], scores: List[List[float]],
-                       debate_config: Dict[str, Any]) -> List[Dict[str, Any]]:
+def enrich_experiences(experiences: List[List[Dict[str,
+                                              Any]]], scores: List[List[float]],
+                       debate_config: Dict[str, Any]) -> List[List[Dict[str,
+                                              Any]]]:
     """
     Tack scores on the final token of each experience.
+
+    Returns
+        List of enriched experiences (round x party)
     """
     experiences = experiences.copy()
     for run_id in range(debate_config["num_debates"]):
