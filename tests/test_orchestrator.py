@@ -90,7 +90,7 @@ def test_generate_headers(orch: DebateOrchestrator, short_ddc: Dict[str, Any]):
 
 def test_rollout_debate(orch: DebateOrchestrator, short_ddc: Dict[str, Any], long_ddc: Dict[str, Any]):
     clock = Clock()
-    experiences, clock = orch.rollout_debate(short_ddc, clock)
+    experiences, facts, texts, clock = orch.rollout_debate(short_ddc, clock)
     experience = experiences[0][0]
 
     assert experience["response_tensors"].size(0) == short_ddc["num_debates"]
@@ -100,7 +100,7 @@ def test_rollout_debate(orch: DebateOrchestrator, short_ddc: Dict[str, Any], lon
     assert len(experiences) == short_ddc["num_rounds"]
     assert len(experiences[0]) == short_ddc["num_parties"]
 
-    experiences, clock = orch.rollout_debate(long_ddc, clock)
+    experiences, facts, texts, clock = orch.rollout_debate(long_ddc, clock)
     experience = experiences[0][0]
 
     assert experience["response_tensors"].size(0) == long_ddc["num_debates"]

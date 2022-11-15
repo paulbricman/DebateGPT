@@ -41,8 +41,8 @@ class DebateOrchestrator(Orchestrator):
         ppo_rl_elements = []
         stats = {}
 
-        experiences = self.rollout_debate(debate_config,
-                                          clock)  # round x party x run
+        experiences, facts, texts, clock = self.rollout_debate(debate_config,
+                                          clock)
         experiences, mixings = reward(experiences, debate_config)
 
         for round_id in range(debate_config["num_rounds"]):
@@ -179,7 +179,7 @@ class DebateOrchestrator(Orchestrator):
         }
 
     def rollout_debate(self, debate_config: Dict[str, Any],
-                       clock: Clock) -> Tuple[List[Dict[str, Any]], Clock]:
+                       clock: Clock) -> Tuple[List[Dict[str, Any]], List[List[str]], List[str], Clock]:
         """
         Systematically generate propositions contributed by alternate parties for a number of rounds while keeping track of everything (e.g. logprobs, KLs, tokens, etc.).
         """
@@ -201,7 +201,7 @@ class DebateOrchestrator(Orchestrator):
             experiences += [round_experiences]
 
         wandb.log({"sample_debate": texts[0]})
-        return experiences, clock
+        return experiences, facts, texts, clock
 
     def create_headers(
             self, debate_config: Dict[str, Any],

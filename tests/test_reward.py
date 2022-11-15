@@ -88,7 +88,7 @@ def test_enrich_experiences(ddc: Dict[str, Any], orch: DebateOrchestrator,
                             dummy_graphs: List[Any]):
     pageranks = compute_pagerank(dummy_graphs, ddc)
     clock = Clock()
-    experiences, clock = orch.rollout_debate(ddc, clock)
+    experiences, facts, texts, clock = orch.rollout_debate(ddc, clock)
     initial_std_reward = experiences[0][0]["all_rewards"][0][0].tolist()
     initial_final_reward = experiences[0][0]["all_rewards"][0][-1].tolist()
     enriched_experiences = enrich_experiences(experiences, pageranks, ddc)
