@@ -25,10 +25,10 @@ def reward(experiences: List[List[Dict[str, Any]]], facts: List[List[str]],
 
         props += [run_props]
 
-    graphs = compose_graphs(props, facts)
-    scores = compute_pagerank(graphs)
-    mixing = compute_mixing(graphs)
-    enriched_es = enrich_experiences(experiences, scores)
+    graphs = compose_graphs(props, facts, debate_config)
+    scores = compute_pagerank(graphs, debate_config)
+    mixing = compute_mixing(graphs, debate_config)
+    enriched_es = enrich_experiences(experiences, scores, debate_config)
     return enriched_es, mixing
 
 

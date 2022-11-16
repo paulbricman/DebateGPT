@@ -5,7 +5,7 @@ import wandb
 def main():
     wandb.init(project="DebateGPT")
     model = trainer.train()
-    model.save(".", "DebateGPT")
+    model.save("ckpts")
 
 
 if __name__ == "__main__":
