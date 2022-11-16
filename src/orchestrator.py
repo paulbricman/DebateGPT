@@ -78,7 +78,7 @@ class DebateOrchestrator(Orchestrator):
         Returns:
             List of debate configs
         """
-        num_debate_config_types = 2 # TODO: increase after testing
+        num_debate_config_types = 8
         debate_configs = []
 
         for id in range(num_debate_config_types):
@@ -93,7 +93,7 @@ class DebateOrchestrator(Orchestrator):
             objectives = [[round(e, 2) for e in f] for f in objectives]
 
             debate_configs += [{
-                "num_debates": 2, # TODO: increase after testing
+                "num_debates": 1024,
                 "num_parties": num_parties,
                 "num_rounds": num_rounds,
                 "num_facts": num_facts,
@@ -125,7 +125,7 @@ class DebateOrchestrator(Orchestrator):
                 **batch,
                 bad_words_ids=newline_ids,
                 force_words_ids=newsent_id,
-                num_beams=2,  # TODO: increase after tests
+                num_beams=5,
             )
         else:
             samples = self.rl_model.generate(
