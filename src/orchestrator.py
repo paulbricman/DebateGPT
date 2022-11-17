@@ -78,8 +78,8 @@ class DebateOrchestrator(Orchestrator):
         Returns:
             List of debate configs
         """
-        num_debate_config_types = 8
-        num_debates = 1024
+        num_debate_config_types = 2
+        num_debates = 2
         debate_configs = []
 
         for id in range(num_debate_config_types):
@@ -126,7 +126,7 @@ class DebateOrchestrator(Orchestrator):
                 **batch,
                 bad_words_ids=newline_ids,
                 force_words_ids=newsent_id,
-                num_beams=5,
+                num_beams=3,
             )
         else:
             samples = self.rl_model.generate(

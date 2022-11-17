@@ -14,7 +14,7 @@ def train() -> AcceleratePPOModel:
     """
     Dispatches debate fine-tuning in an online fashion through the custom orchestrator.
     """
-    config = TRLConfig.load_yaml("configs/debate_ft_config_distributed.yml")
+    config = TRLConfig.load_yaml("configs/debate_ft_config.yml")
     model: AcceleratePPOModel = get_model(config.model.model_type)(config)
     orch = DebateOrchestrator(model)
 

@@ -36,6 +36,8 @@ method:
   cliprange: 0.2  # clip range
   cliprange_value: 0.2  # clip range
   vf_coef: 2.3  # value term weight
+  scale_reward: True
+  clip_reward: 10
   gen_kwargs:
     max_new_tokens: 30
     no_repeat_ngram_size: 3

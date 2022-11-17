@@ -64,9 +64,9 @@ def compute_arc_weights(
     """
     # Parallelization approach uses models prepared by accelerate. Alternatively, create one pipeline per device and handle dispatch manually. Alternatively, scrape all of that and just fallback to a single pipeline on one GPU, as it would be simple despite not efficient.
     model = AutoModelForSequenceClassification.from_pretrained(
-        'cross-encoder/nli-deberta-v3-base')
+        'cross-encoder/nli-deberta-v3-xsmall')
     tokenizer = AutoTokenizer.from_pretrained(
-        'cross-encoder/nli-deberta-v3-base')
+        'cross-encoder/nli-deberta-v3-xsmall')
     # Note: UserWarning: The sentencepiece tokenizer that you are converting to a fast tokenizer uses the byte fallback option which is not implemented in the fast tokenizers. In practice this means that the fast version of the tokenizer can produce unknown tokens whereas the sentencepiece version would have converted these unknown tokens into a sequence of byte tokens matching the original piece of text.
     accelerator = Accelerator()
     model = accelerator.prepare(model)

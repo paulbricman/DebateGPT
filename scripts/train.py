@@ -3,7 +3,6 @@ import wandb
 
 
 def main():
-    wandb.init(project="DebateGPT")
     model = trainer.train()
     model.save("ckpts")
 
