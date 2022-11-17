@@ -1,4 +1,3 @@
-
 model:
   model_path: "distilgpt2"  # Name of hf model to load
   tokenizer_path: "distilgpt2"  # Name of hf tokenizer to load
@@ -6,10 +5,10 @@ model:
   num_layers_unfrozen: 2  # Number of bottom layers to freeze during training
 
 train:
-  seq_length: 980  # Size of LM context
-  epochs: 2  # Train for max(epochs, total_steps)
-  total_steps: 4  # Train for max(epochs, total_steps)
-  batch_size: 2  # batch size
+  seq_length: 980  # Size of LM context for tok, presently overloaded
+  epochs: 16  # Highest level period (subsumes ppo_epochs passes through data)
+  total_steps: 9999999999  # Train for min(this, epochs * ppo_epochs * experiences_per_epoch)
+  batch_size: 2  # batch size for updating model on ppo_epoch experiences
 
   lr_init: 1.412e-4  # init learning rate
   lr_target: 1.412e-4  # target final learning rate
@@ -18,16 +17,16 @@ train:
   weight_decay: 1.0e-6  # weight decay param
 
   checkpoint_interval: 10000  # checkpoint interval
-  eval_interval: 99999999999999 # eval interval, never please
+  eval_interval: 99999999999 # eval interval, never used presently
 
-  pipeline: "PPOPipeline"  # prompt pipeline to load
-  orchestrator: "PPOOrchestrator"  # orchestrator to load
+  pipeline: "PPOPipeline"  # prompt pipeline to load, not used presently
+  orchestrator: "PPOOrchestrator"  # orchestrator to load, not used presently
 
 method:
   name: 'ppoconfig'  # Name of RL method config
-  num_rollouts: 128  # Number of rollouts to collect per epoch
-  chunk_size: 128  # Number of rollouts to collect in one loop of orchestrator
-  ppo_epochs: 4  # Number of ppo epochs
+  num_rollouts: 128  # Number of rollouts to collect per epoch, not used presently
+  chunk_size: 128  # Number of rollouts to collect in one loop of orchestrator, not used
+  ppo_epochs: 2 # Number of ppo epochs, passes through same experience
   init_kl_coef: 0.2  # init kl coefficient
   target: 6  # target kl coefficient, set None for fixed kl coef
   horizon: 10000  # PPO horizon

@@ -79,10 +79,11 @@ class DebateOrchestrator(Orchestrator):
             List of debate configs
         """
         num_debate_config_types = 8
+        num_debates = 1024
         debate_configs = []
 
         for id in range(num_debate_config_types):
-            num_parties = random.randint(1, 5)
+            num_parties = random.randint(2, 5)
             num_facts = random.randint(1, 5)
             num_rounds = random.randint(5, 10)
             objectives = (torch.normal(torch.zeros(
@@ -93,7 +94,7 @@ class DebateOrchestrator(Orchestrator):
             objectives = [[round(e, 2) for e in f] for f in objectives]
 
             debate_configs += [{
-                "num_debates": 1024,
+                "num_debates": num_debates,
                 "num_parties": num_parties,
                 "num_rounds": num_rounds,
                 "num_facts": num_facts,
