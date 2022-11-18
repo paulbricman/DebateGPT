@@ -81,6 +81,8 @@ def test_long_ephemeral_generate(orch: DebateOrchestrator):
 def test_generate_headers(orch: DebateOrchestrator, short_ddc: Dict[str, Any]):
     aliases = string.ascii_uppercase[:short_ddc["num_parties"]]
     headers, facts = orch.create_headers(short_ddc, aliases)
+    print(facts)
+    assert False
 
     assert len(headers) == 2
     assert len(headers[0]) > 10
@@ -109,4 +111,3 @@ def test_rollout_debate(orch: DebateOrchestrator, short_ddc: Dict[str, Any], lon
 
     assert len(experiences) == long_ddc["num_rounds"]
     assert len(experiences[0]) == long_ddc["num_parties"]
-    # TODO: fix management of long debate

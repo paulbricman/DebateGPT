@@ -237,7 +237,7 @@ class DebateOrchestrator(Orchestrator):
             fact_prompt
         ] * debate_config["num_facts"] * debate_config["num_debates"]
         facts = self.ephemeral_generate(fact_prompts, beams=False)["texts"]
-        facts = [e[len(fact_prompt):].split("\n")[0].strip() for e in facts]
+        facts = [e.split("\n")[0].strip() for e in facts]
         fact_headers = [
             facts[e * debate_config["num_facts"]:(e + 1) *
                   debate_config["num_facts"]]
