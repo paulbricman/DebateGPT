@@ -8,7 +8,8 @@ from trlx.utils import Clock
 from trlx.data.configs import TRLConfig
 from trlx.model.accelerate_ppo_model import AcceleratePPOModel
 from trlx.utils.loading import get_model
-from transformers import AutoModelForSequenceClassification, AutoTokenizer
+from transformers import AutoModelForSequenceClassification, AutoTokenizer, ZeroShotClassificationPipeline, pipeline
+from accelerate import Accelerator
 
 
 @pytest.fixture
@@ -58,9 +59,10 @@ def orch():
         'cross-encoder/nli-deberta-v3-xsmall')
     nli_tok = AutoTokenizer.from_pretrained(
         'cross-encoder/nli-deberta-v3-xsmall')
-    nli_model = model.accelerator.prepare(nli_model)
+    accelerator = Accelerator()
+    nli_pipe = pipeline("zero-shot-classification", model=nli_model, tokenizer=nli_tok, device=accelerator.device)
 
-    orch = DebateOrchestrator(model, nli_model, nli_tok)
+    orch = DebateOrchestrator(model, nli_pipe)
     return orch
 
 
@@ -118,7 +120,7 @@ def test_enrich_experiences(ddc: Dict[str, Any], orch: DebateOrchestrator,
 
 def test_compute_arc_weights(dummy_props: List[List[str]], dummy_facts: List[List[str]], ddc: Dict[str,
                                                                                                    Any], orch: DebateOrchestrator):
-    weights = compute_arc_weights(dummy_props, dummy_facts, ddc, orch.nli_model, orch.nli_tok)
+    weights = compute_arc_weights(dummy_props, dummy_facts, ddc, orch.nli_pipe)
 
     assert len(weights) == len(dummy_props)
     assert len(weights[0]) == len(dummy_props[0]) * (len(dummy_props[0]) - 1) + len(dummy_props[0]) * len(dummy_facts[0])
@@ -126,7 +128,7 @@ def test_compute_arc_weights(dummy_props: List[List[str]], dummy_facts: List[Lis
 
 
 def test_compute_graphs(dummy_props: List[List[str]], dummy_facts: List[List[str]], ddc: Dict[str, Any], orch: DebateOrchestrator):
-    graphs = compose_graphs(dummy_props, dummy_facts, ddc, orch.nli_model, orch.nli_tok)
+    graphs = compose_graphs(dummy_props, dummy_facts, ddc, orch.nli_pipe)
 
     assert len(graphs[0].nodes) == len(dummy_props[0]) + len(dummy_facts[0])
     assert len(graphs[0].edges) == len(dummy_props[0]) * (len(dummy_props[0]) - 1) + len(dummy_props[0]) * len(dummy_facts[0])

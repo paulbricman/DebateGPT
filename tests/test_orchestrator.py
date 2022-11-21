@@ -8,7 +8,8 @@ from trlx.data.configs import TRLConfig
 from trlx.model.accelerate_ppo_model import AcceleratePPOModel
 from trlx.utils.loading import get_model
 from trlx.utils import Clock
-from transformers import AutoModelForSequenceClassification, AutoTokenizer
+from transformers import AutoModelForSequenceClassification, AutoTokenizer, ZeroShotClassificationPipeline, pipeline
+from accelerate import Accelerator
 
 
 @pytest.fixture
@@ -19,9 +20,10 @@ def orch():
         'cross-encoder/nli-deberta-v3-xsmall')
     nli_tok = AutoTokenizer.from_pretrained(
         'cross-encoder/nli-deberta-v3-xsmall')
-    nli_model = model.accelerator.prepare(nli_model)
+    accelerator = Accelerator()
+    nli_pipe = pipeline("zero-shot-classification", model=nli_model, tokenizer=nli_tok, device=accelerator.device)
 
-    orch = DebateOrchestrator(model, nli_model, nli_tok)
+    orch = DebateOrchestrator(model, nli_pipe)
     return orch
 
 
