@@ -69,9 +69,11 @@ def compute_arc_weights(
 
     weighted_edges = []
     for run_props, run_facts in zip(props, facts):
+        run_items = run_props + run_facts
+        run_items = [e if e != "" else "?" for e in run_items]
         run_scores = nli_pipe(
-            run_props + run_facts,
-            run_props + run_facts,
+            run_items,
+            run_items,
             multi_label=True,
             hypothesis_template="{}")
 
