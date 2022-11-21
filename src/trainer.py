@@ -8,6 +8,7 @@ from trlx.model.accelerate_ppo_model import AcceleratePPOModel
 from trlx.utils.loading import get_model
 from trlx.pipeline.offline_pipeline import PromptPipeline
 from src.orchestrator import DebateOrchestrator
+from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
 
 def train() -> AcceleratePPOModel:
@@ -16,7 +17,14 @@ def train() -> AcceleratePPOModel:
     """
     config = TRLConfig.load_yaml("configs/debate_ft_config.yml")
     model: AcceleratePPOModel = get_model(config.model.model_type)(config)
-    orch = DebateOrchestrator(model)
+
+    nli_model = AutoModelForSequenceClassification.from_pretrained(
+        'cross-encoder/nli-deberta-v3-xsmall')
+    nli_tok = AutoTokenizer.from_pretrained(
+        'cross-encoder/nli-deberta-v3-xsmall')
+    nli_model = model.accelerator.prepare(nli_model)
+
+    orch = DebateOrchestrator(model, nli_model, nli_tok)
 
     # Two lines below are just to play nice with trlx
     eval_pipeline = PromptPipeline([" "] * 2, model.tokenizer)

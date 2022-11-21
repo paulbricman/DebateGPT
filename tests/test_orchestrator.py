@@ -8,13 +8,20 @@ from trlx.data.configs import TRLConfig
 from trlx.model.accelerate_ppo_model import AcceleratePPOModel
 from trlx.utils.loading import get_model
 from trlx.utils import Clock
+from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
 
 @pytest.fixture
 def orch():
     config = TRLConfig.load_yaml("../configs/debate_ft_config.yml")
     model: AcceleratePPOModel = get_model(config.model.model_type)(config)
-    orch: DebateOrchestrator = DebateOrchestrator(model)
+    nli_model = AutoModelForSequenceClassification.from_pretrained(
+        'cross-encoder/nli-deberta-v3-xsmall')
+    nli_tok = AutoTokenizer.from_pretrained(
+        'cross-encoder/nli-deberta-v3-xsmall')
+    nli_model = model.accelerator.prepare(nli_model)
+
+    orch = DebateOrchestrator(model, nli_model, nli_tok)
     return orch
 
 
@@ -52,7 +59,7 @@ def long_ddc():
 def test_default_debate_configs(orch: DebateOrchestrator):
     ddcs = orch.default_debate_configs()
 
-    assert len(ddcs) == 8
+    assert len(ddcs) == 2
     assert ddcs[0]["num_parties"] == len(ddcs[0]["objectives"])
     assert ddcs[0]["num_parties"] == len(ddcs[0]["objectives"][0])
     assert ddcs[0]["num_facts"] <= 5
@@ -81,8 +88,6 @@ def test_long_ephemeral_generate(orch: DebateOrchestrator):
 def test_generate_headers(orch: DebateOrchestrator, short_ddc: Dict[str, Any]):
     aliases = string.ascii_uppercase[:short_ddc["num_parties"]]
     headers, facts = orch.create_headers(short_ddc, aliases)
-    print(facts)
-    assert False
 
     assert len(headers) == 2
     assert len(headers[0]) > 10

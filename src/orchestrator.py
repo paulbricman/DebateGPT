@@ -9,14 +9,17 @@ from trlx.orchestrator import Orchestrator
 from trlx.utils import Clock
 from trlx.utils.modeling import logprobs_from_logits
 from src.reward import reward
+from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
 
 class DebateOrchestrator(Orchestrator):
     """
     Orchestrator generates debate experience, packages them up in PPORLElements, and pushes them to the store.
     """
-    def __init__(self, model: BaseRLModel):
+    def __init__(self, model: BaseRLModel, nli_model: AutoModelForSequenceClassification, nli_tok: AutoTokenizer):
         self.rl_model = model
+        self.nli_model = nli_model
+        self.nli_tok = nli_tok
 
         if not hasattr(self.rl_model.model, "frozen_head"):
             self.ref_model = self.rl_model.get_arch(self.rl_model.config)
@@ -42,7 +45,7 @@ class DebateOrchestrator(Orchestrator):
 
         experiences, facts, texts, clock = self.rollout_debate(debate_config,
                                           clock)
-        experiences, mixings = reward(experiences, facts, debate_config)
+        experiences, mixings = reward(experiences, facts, debate_config, self.nli_model, self.nli_tok)
 
         for round_id in range(debate_config["num_rounds"]):
             for party_id in range(debate_config["num_parties"]):

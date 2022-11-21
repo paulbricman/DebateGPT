@@ -7,7 +7,7 @@ from transformers import AutoTokenizer, AutoModelForSequenceClassification
 
 
 def reward(experiences: List[List[Dict[str, Any]]], facts: List[List[str]],
-           debate_config: Dict[str, Any]) -> Tuple[List[List[Dict[str, Any]]], List[float]]:
+           debate_config: Dict[str, Any], nli_model: AutoModelForSequenceClassification, nli_tok: AutoTokenizer) -> Tuple[List[List[Dict[str, Any]]], List[float]]:
     """
     Coordinate the enrichment of experiences with rewards. In terms of terminology, reward in this codebase refers to the sum of KL penalties and domain-specific scores. Although the relevant aspects of debate configuration can be inferred from the structure of the `experiences` object, having to include it explicitly makes it clear that they have to share the same structure.
 
@@ -25,14 +25,14 @@ def reward(experiences: List[List[Dict[str, Any]]], facts: List[List[str]],
 
         props += [run_props]
 
-    graphs = compose_graphs(props, facts, debate_config)
+    graphs = compose_graphs(props, facts, debate_config, nli_model, nli_tok)
     scores = compute_pagerank(graphs, debate_config)
     mixing = compute_mixing(graphs, debate_config)
     enriched_es = enrich_experiences(experiences, scores, debate_config)
     return enriched_es, mixing
 
 
-def compose_graphs(props: List[List[str]], facts: List[List[str]], debate_config: Dict[str, Any]) -> List[nx.classes.DiGraph]:
+def compose_graphs(props: List[List[str]], facts: List[List[str]], debate_config: Dict[str, Any], nli_model: AutoModelForSequenceClassification, nli_tok: AutoTokenizer) -> List[nx.classes.DiGraph]:
     """
     Compose a weighted directed graph using networkx where nodes represent propositions and arc represent relations of support between them.
 
@@ -42,7 +42,7 @@ def compose_graphs(props: List[List[str]], facts: List[List[str]], debate_config
     assert all([len(e) == len(props[0])
                 for e in props]), "Runs differ in num_props!"
 
-    weights = compute_arc_weights(props, facts, debate_config)
+    weights = compute_arc_weights(props, facts, debate_config, nli_model, nli_tok)
     graphs = []
     for run_id in range(len(props)):
         D = nx.DiGraph()
@@ -55,22 +55,15 @@ def compose_graphs(props: List[List[str]], facts: List[List[str]], debate_config
 def compute_arc_weights(
         props: List[List[str]],
         facts: List[List[str]],
-        debate_config: Dict[str, Any]) -> List[List[Tuple[int, int, float]]]:
+        debate_config: Dict[str, Any], nli_model: AutoModelForSequenceClassification, nli_tok: AutoTokenizer) -> List[List[Tuple[int, int, float]]]:
     """
     Run pairs of props through NLI pipeline to compute arc weights for each graph. The predefined zero-shot text classification is used due to it conveniently wrapping NLI-related logic , although its original goal was to be used in a different application.
 
     Returns:
         List of lists of outbound-inbound-weight triples defining arcs (run x weight)
     """
-    # Parallelization approach uses models prepared by accelerate. Alternatively, create one pipeline per device and handle dispatch manually. Alternatively, scrape all of that and just fallback to a single pipeline on one GPU, as it would be simple despite not efficient.
-    model = AutoModelForSequenceClassification.from_pretrained(
-        'cross-encoder/nli-deberta-v3-xsmall')
-    tokenizer = AutoTokenizer.from_pretrained(
-        'cross-encoder/nli-deberta-v3-xsmall')
     # Note: UserWarning: The sentencepiece tokenizer that you are converting to a fast tokenizer uses the byte fallback option which is not implemented in the fast tokenizers. In practice this means that the fast version of the tokenizer can produce unknown tokens whereas the sentencepiece version would have converted these unknown tokens into a sequence of byte tokens matching the original piece of text.
-    accelerator = Accelerator()
-    model = accelerator.prepare(model)
-    nli_pipe = pipeline("zero-shot-classification", model=model, tokenizer=tokenizer)
+    nli_pipe = pipeline("zero-shot-classification", model=nli_model, tokenizer=nli_tok)
     num_props_per_debate = debate_config["num_parties"] * debate_config["num_rounds"]
     num_items_per_debate = num_props_per_debate  + debate_config["num_facts"]
 

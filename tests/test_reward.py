@@ -8,6 +8,7 @@ from trlx.utils import Clock
 from trlx.data.configs import TRLConfig
 from trlx.model.accelerate_ppo_model import AcceleratePPOModel
 from trlx.utils.loading import get_model
+from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
 
 @pytest.fixture
@@ -53,7 +54,13 @@ def ddc():
 def orch():
     config = TRLConfig.load_yaml("../configs/debate_ft_config.yml")
     model: AcceleratePPOModel = get_model(config.model.model_type)(config)
-    orch: DebateOrchestrator = DebateOrchestrator(model)
+    nli_model = AutoModelForSequenceClassification.from_pretrained(
+        'cross-encoder/nli-deberta-v3-xsmall')
+    nli_tok = AutoTokenizer.from_pretrained(
+        'cross-encoder/nli-deberta-v3-xsmall')
+    nli_model = model.accelerator.prepare(nli_model)
+
+    orch = DebateOrchestrator(model, nli_model, nli_tok)
     return orch
 
 
@@ -110,16 +117,16 @@ def test_enrich_experiences(ddc: Dict[str, Any], orch: DebateOrchestrator,
 
 
 def test_compute_arc_weights(dummy_props: List[List[str]], dummy_facts: List[List[str]], ddc: Dict[str,
-                                                                     Any]):
-    weights = compute_arc_weights(dummy_props, dummy_facts, ddc)
+                                                                                                   Any], orch: DebateOrchestrator):
+    weights = compute_arc_weights(dummy_props, dummy_facts, ddc, orch.nli_model, orch.nli_tok)
 
     assert len(weights) == len(dummy_props)
     assert len(weights[0]) == len(dummy_props[0]) * (len(dummy_props[0]) - 1) + len(dummy_props[0]) * len(dummy_facts[0])
     assert all([e[2] <= 1. and e[2] >= 0. for e in weights[0]])
 
 
-def test_compute_graphs(dummy_props: List[List[str]], dummy_facts: List[List[str]], ddc: Dict[str, Any]):
-    graphs = compose_graphs(dummy_props, dummy_facts, ddc)
+def test_compute_graphs(dummy_props: List[List[str]], dummy_facts: List[List[str]], ddc: Dict[str, Any], orch: DebateOrchestrator):
+    graphs = compose_graphs(dummy_props, dummy_facts, ddc, orch.nli_model, orch.nli_tok)
 
     assert len(graphs[0].nodes) == len(dummy_props[0]) + len(dummy_facts[0])
     assert len(graphs[0].edges) == len(dummy_props[0]) * (len(dummy_props[0]) - 1) + len(dummy_props[0]) * len(dummy_facts[0])
