@@ -67,7 +67,7 @@ def test_default_debate_configs(orch: DebateOrchestrator):
 
 
 def test_ephemeral_generate(orch: DebateOrchestrator):
-    prompts = ["", "Hi"]
+    prompts = ["", "Hi", "This is the last sentence of this document.\n"]
     experience = orch.ephemeral_generate(prompts)
 
     assert len(experience["texts"]) == len(prompts)

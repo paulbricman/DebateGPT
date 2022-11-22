@@ -129,12 +129,14 @@ class DebateOrchestrator(Orchestrator):
                 bad_words_ids=newline_ids,
                 force_words_ids=newsent_id,
                 num_beams=3,
+                min_length=batch["input_ids"].size(1) + 10,
             )
         else:
             samples = self.rl_model.generate(
                 **batch,
                 do_sample=True,
                 num_beams=1,
+                min_length=batch["input_ids"].size(1) + 10,
             )
 
         # Wrangle
