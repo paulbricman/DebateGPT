@@ -71,7 +71,6 @@ class DebateOrchestrator(Orchestrator):
         }
         self.rl_model.accelerator.log(stats, step=iter_count)
         self.rl_model.push_to_store(ppo_rl_elements)
-        wandb.log(stats)
 
     def default_debate_configs(self) -> List[Dict[str, Any]]:
         """
@@ -117,7 +116,7 @@ class DebateOrchestrator(Orchestrator):
         batch = self.rl_model.tokenizer(
             prompts,
             truncation=True,
-            padding=True,
+            padding="max_length",
             return_tensors="pt",
             max_length=self.rl_model.config.train.seq_length)
 
