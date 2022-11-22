@@ -79,6 +79,7 @@ class DebateOrchestrator(Orchestrator):
         Returns:
             List of debate configs
         """
+        random.seed(0)
         num_debate_config_types = 2
         num_debates = 2
         debate_configs = []
@@ -116,7 +117,7 @@ class DebateOrchestrator(Orchestrator):
         batch = self.rl_model.tokenizer(
             prompts,
             truncation=True,
-            padding="max_length",
+            padding=True,
             return_tensors="pt",
             max_length=self.rl_model.config.train.seq_length)
 
