@@ -73,6 +73,10 @@ class Debate:
             "sel_branch": self.sel_branch
         }
 
+    def play(self, num_rounds: int = 3):
+        for round_id in range(num_rounds):
+            self.round()
+
     def round(self):
         for party_id in range(self.num_parties):
             self.step()
@@ -82,7 +86,6 @@ class Debate:
             prop = self.contribute(branch_id)
             self.prop_grid[branch_id][-1] += [prop]
 
-        # Loop party id over
         self.curr_party += 1
         if self.curr_party >= self.num_parties:
             self.curr_party = 0
