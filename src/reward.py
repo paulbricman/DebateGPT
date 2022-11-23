@@ -104,7 +104,7 @@ def compute_pagerank(graphs: List[nx.classes.DiGraph], debate_config: Dict[str, 
         for party in range(debate_config["num_parties"]):
             party_sum = sum([run[party + round_id * debate_config["num_parties"]] for round_id in range(debate_config["num_rounds"])])
             party_avg = party_sum / debate_config["num_rounds"]
-            party_avgs += [party_avg]
+            party_avgs += [party_avg * debate_config["num_rounds"]] # Reward should be independent of prop count per party
 
         objectives = torch.Tensor(debate_config["objectives"])
         party_avgs = torch.Tensor(party_avgs)
