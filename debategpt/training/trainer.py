@@ -7,7 +7,7 @@ from trlx.data.configs import TRLConfig
 from trlx.model.accelerate_ppo_model import AcceleratePPOModel
 from trlx.utils.loading import get_model
 from trlx.pipeline.offline_pipeline import PromptPipeline
-from src.orchestrator import DebateOrchestrator
+from debategpt.training.orchestrator import DebateOrchestrator
 from transformers import AutoModelForSequenceClassification, AutoTokenizer, ZeroShotClassificationPipeline, pipeline
 from accelerate import Accelerator
 

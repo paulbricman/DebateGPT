@@ -159,8 +159,9 @@ cython_debug/
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
 
-training/trlx/
-training/tests/wandb/
-training/wandb/
+trlx/
+src/training/tests/wandb/
+src/training/wandb/
+src/wandb/
+src/training/ckpts/
 wandb/
-training/ckpts/

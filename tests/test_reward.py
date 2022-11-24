@@ -2,8 +2,8 @@ from typing import List, Any, Dict
 import networkx as nx
 import pytest
 
-from src.reward import compute_pagerank, compute_mixing, enrich_experiences, compute_arc_weights, compose_graphs
-from src.orchestrator import DebateOrchestrator
+from debategpt.training.reward import compute_pagerank, compute_mixing, enrich_experiences, compute_arc_weights, compose_graphs
+from debategpt.training.orchestrator import DebateOrchestrator
 from trlx.utils import Clock
 from trlx.data.configs import TRLConfig
 from trlx.model.accelerate_ppo_model import AcceleratePPOModel

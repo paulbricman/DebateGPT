@@ -3,7 +3,7 @@ import pytest
 import re
 from typing import Any, Dict
 
-from src.orchestrator import DebateOrchestrator
+from debategpt.training.orchestrator import DebateOrchestrator
 from trlx.data.configs import TRLConfig
 from trlx.model.accelerate_ppo_model import AcceleratePPOModel
 from trlx.utils.loading import get_model

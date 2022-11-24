@@ -8,7 +8,7 @@ from trlx.model import BaseRLModel
 from trlx.orchestrator import Orchestrator
 from trlx.utils import Clock
 from trlx.utils.modeling import logprobs_from_logits
-from src.reward import reward
+from debategpt.training.reward import reward
 from transformers import ZeroShotClassificationPipeline
 
 
