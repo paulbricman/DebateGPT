@@ -125,6 +125,39 @@ class Debate:
                 for branch_id in range(self.num_branches):
                     self.prop_grid[branch_id] += [[]]
 
+    def transcript(self):
+        party_idx = self.sel_party
+        if self.sel_party == None:
+            party_idx = list(range(self.num_parties))
+        elif isinstance(party.sel_party, int):
+            party_idx = [party_idx]
+
+        round_idx = self.sel_round
+        if self.sel_round == None:
+            round_idx = list(range(self.curr_round))
+        elif isinstance(self.sel_round, tuple):
+            round_idx = list(range(*self.sel_round))
+        elif isinstance(self.sel_round, int):
+            round_idx = [round_idx]
+
+        branch_idx = self.sel_branch
+        if self.sel_branch == None:
+            branch_idx = list(range(self.num_branches))
+        elif isinstance(self.sel_branch, int):
+            branch_idx = [branch_idx]
+
+        transcript = ""
+        for branch_id in branch_idx:
+            branch_transcript = ""
+            for round_id in round_idx:
+                for party_id in party_idx:
+                    if round_id < self.curr_round or party_id < self.curr_party:
+                        branch_transcript += f"{self.aliases[party_id]}: {self.prop_grid[branch_id][round_id][party_id]}\n"
+
+            transcript += f"\nBranch #{branch_id}\n\n{branch_transcript}---"
+
+        return transcript
+
     def fork(self, forking_factor: int = 2):
         """
         Forks the current debate(s) into `forking_factor` copies. You can fork multiple times in a row. Functions for advancing the debate(s) map out to all parallel branches. Mutates in-place.

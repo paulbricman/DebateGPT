@@ -113,3 +113,15 @@ def test_distance(debate: Debate):
     distance(debate, debate)
     distance("Test string", debate)
     distance(debate, "Test string")
+
+
+def test_transcript(debate:Debate):
+    debate.play()
+    t1 = debate.transcript()
+    debate.play()
+    t2 = debate.transcript()
+    debate.fork()
+    t3 = debate.transcript()
+    assert len(t1) > 10
+    assert len(t1) < len(t2)
+    assert len(t2) < len(t3)
