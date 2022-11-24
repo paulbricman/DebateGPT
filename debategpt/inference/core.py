@@ -1,7 +1,7 @@
 from transformers import AutoModel, AutoTokenizer
 import string
 from copy import deepcopy
-from typing import Union, Tuple
+from typing import Union, Tuple, List
 
 
 class Debate:
@@ -43,16 +43,19 @@ class Debate:
         clone.sel_party = party_id
         return clone
 
-    def round(self, round_id: Union[int, Tuple[int, int], type(None)]):
-        assert isinstance(round_id, (int, tuple, type(None))), "Round selector should be either an int (i.e. one round id), a tuple of two ints (i.e. from the first to the second, not included), or None to deselect."
+    def round(self, round_id: Union[int, type(None)], round_end: Union[int, type(None)] = None):
+        assert isinstance(round_id, (int, type(None))) and isinstance(round_end, (int, type(None))), "Round selector requires either an int (i.e. one round id), a pair of two ints (i.e. from the first to the second, not included), or None to deselect."
         if isinstance(round_id, int):
             assert round_id <= self.curr_round and round_id >= 0, f"Current debate has only been running for {self.curr_round} (zero-indexed) rounds. You asked for round {round_id}, which hasn't happened yet."
-        elif isinstance(round_id, tuple):
-            assert round_id[0] <= round_id[1], "Start round selector should be lower or equal than the end selector."
-            assert round_id[0] <= self.curr_round and round_id[0] >= 0 and round[1] <= self.curr_round and round_id[1] >= 0, f"Current debate has only been running for {self.curr_round} (zero-indexed) rounds. You asked for rounds outside this range."
+        if isinstance(round_end, int):
+            assert round_end <= self.curr_round and round_end >= 0, f"Current debate has only been running for {self.curr_round} (zero-indexed) rounds. You asked for round {round_end}, which hasn't happened yet."
+            assert round_id <= round_end, "Start round selector should be lower or equal than the end selector."
 
         clone = self._clone()
-        clone.sel_round = round_id
+        if round_end:
+            clone.sel_round = round_id, round_end
+        else:
+            clone.sel_round = round_id
         return clone
 
     def branch(self, branch_id: Union[int, List[int]]):
