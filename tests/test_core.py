@@ -58,3 +58,58 @@ def test_chaining(debate: Debate):
 
     assert sel1.party(0).party(None).selection() == debate.selection()
 
+
+def test_step(debate: Debate):
+    assert debate.curr_party == 0
+    debate.step()
+    assert debate.curr_party == 1
+    debate.step()
+    assert debate.curr_party == 0
+    assert debate.curr_round == 1
+    debate.step(2)
+    assert debate.curr_party == 0
+    assert debate.curr_round == 2
+
+
+def test_play(debate: Debate):
+    d1 = debate
+    d2 = debate._clone()
+
+    d1.step(2)
+    d2.play()
+    assert d1.__dict__ == d2.__dict__
+
+    d1.step(4)
+    d2.play(2)
+    assert d1.__dict__ == d2.__dict__
+
+
+def test_fork(debate: Debate):
+    debate.play(3)
+    assert len(debate.prop_grid) == 1
+    debate.fork()
+    assert len(debate.prop_grid) == 2
+    debate.fork()
+    assert len(debate.prop_grid) == 4
+    debate.fork(3)
+    assert len(debate.prop_grid) == 12
+
+
+def test_establish(debate: Debate):
+    debate.play(3)
+    debate.establish("This is known.")
+    debate.establish(["This is also known.", "Also this is known."])
+    assert len(debate.facts[0]) == 3
+    debate.fork()
+    assert len(debate.facts[0]) == 3
+    debate.establish("Branch-invariant truth.")
+    assert len(debate.facts[0]) == 4
+    assert len(debate.facts[1]) == 4
+    debate.establish("This fact is only established in branch 1.", 1)
+    assert len(debate.facts[1]) == 5
+
+
+def test_distance(debate: Debate):
+    distance(debate, debate)
+    distance("Test string", debate)
+    distance(debate, "Test string")

@@ -82,33 +82,37 @@ class Debate:
             for party_id in range(self.num_parties):
                 self.step()
 
-    def step(self):
-        for branch_id in range(self.num_branches):
-            prop = self.contribute(branch_id)
-            self.prop_grid[branch_id][-1] += [prop]
-
-        self.curr_party += 1
-        if self.curr_party >= self.num_parties:
-            self.curr_party = 0
-            self.curr_round += 1
+    def step(self, num_steps: int = 1):
+        for step_id in range(num_steps):
             for branch_id in range(self.num_branches):
-                self.prop_grid[branch_id] += [[]]
+                prop = self.contribute(branch_id)
+                self.prop_grid[branch_id][-1] += [prop]
 
-    def inject(self, prop: str):
-        assert is_prop(self), "When injecting, you must finely select the injection site (i.e. single party, single round, single branch)."
-        self.prop_grid[self.sel_branch][self.sel_round][self.sel_party] = prop
+            self.curr_party += 1
+            if self.curr_party >= self.num_parties:
+                self.curr_party = 0
+                self.curr_round += 1
+                for branch_id in range(self.num_branches):
+                    self.prop_grid[branch_id] += [[]]
 
     def fork(self, forking_factor: int = 2):
         self.prop_grid *= forking_factor
+        self.prop_grid = [deepcopy(e) for e in self.prop_grid]
+        self.facts *= forking_factor
+        self.facts = [deepcopy(e) for e in self.facts]
         self.num_branches *= forking_factor
 
-    def establish(self, facts: Union[str, List[str]], branch: int):
+    def establish(self, facts: Union[str, List[str]], branch: int = None):
         if isinstance(facts, str):
             facts = [facts]
-        self.facts[branch] += facts
+        if not branch:
+            for branch_id in range(self.num_branches):
+                self.facts[branch_id] += facts
+                print("fail should pass through this", branch_id, branch, self.num_branches, self.facts[branch_id])
+        else:
+            self.facts[branch] += facts
 
     def graph(self):
-        assert is_branch(self), "In order to get convert a branch across several rounds to the graph representation, you must select one accordingly."
         return None
 
     def contribute(self, branch: int):
