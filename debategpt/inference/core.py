@@ -11,6 +11,9 @@ class Debate:
             objectives=None,
             model="distilgpt2",
             tokenizer=None):
+        """
+        Main Debate object used to run parallel debates, select propositions out of them (along party, round, and branch dimensions), etc.
+        """
         self.num_parties = num_parties
 
         if objectives:
@@ -37,6 +40,9 @@ class Debate:
         self.facts = [[]]  # branch x facts
 
     def party(self, party_id: Union[int, List[int], type(None)]):
+        """
+        Selects party for subsequent operations (e.g. distance, transcript). Does NOT mutate in-place.
+        """
         assert isinstance(party_id, (int, list, type(
             None))), "Party selector should be either an int (i.e. one party id), a list of ints (i.e. multiple party ids), or None to deselect."
         if isinstance(party_id, int):
@@ -51,6 +57,9 @@ class Debate:
 
     def round(self, round_id: Union[int, type(None)],
               round_end: Union[int, type(None)] = None):
+        """
+        Selects round for subsequent operations (e.g. distance, transcript). Does NOT mutate in-place.
+        """
         assert isinstance(round_id, (int, type(None))) and isinstance(round_end, (int, type(
             None))), "Round selector requires either an int (i.e. one round id), a pair of two ints (i.e. from the first to the second, not included), or None to deselect."
         if isinstance(round_id, int):
@@ -67,6 +76,9 @@ class Debate:
         return clone
 
     def branch(self, branch_id: Union[int, List[int]]):
+        """
+        Selects branch for subsequent operations (e.g. distance, transcript). Does NOT mutate in-place.
+        """
         assert isinstance(branch_id, (int, list, type(
             None))), "Branch selector should be either an int (i.e. one branch id) or a list of ints (i.e. multiple branch ids)."
         if isinstance(branch_id, int):
@@ -80,6 +92,9 @@ class Debate:
         return clone
 
     def selection(self):
+        """
+        Returns a spec of the selection associated with the current object.
+        """
         return {
             "party": self.sel_party,
             "round": self.sel_round,
@@ -87,11 +102,17 @@ class Debate:
         }
 
     def play(self, num_rounds: int = 1):
+        """
+        Runs the debate(s) for `num_rounds` rounds. If not on fresh new round, then the result will have the same current party. Mutates in-place. Parallel debates are advanced in sync.
+        """
         for round_id in range(num_rounds):
             for party_id in range(self.num_parties):
                 self.step()
 
     def step(self, num_steps: int = 1):
+        """
+        Runs the debate(s) for `num_steps` individual steps, meaning that one should expect this many propositions being contributed to each parallel branch. Mutates in-place. Parallel debates are advanced in sync.
+        """
         for step_id in range(num_steps):
             for branch_id in range(self.num_branches):
                 prop = self.contribute(branch_id)
@@ -105,6 +126,9 @@ class Debate:
                     self.prop_grid[branch_id] += [[]]
 
     def fork(self, forking_factor: int = 2):
+        """
+        Forks the current debate(s) into `forking_factor` copies. You can fork multiple times in a row. Functions for advancing the debate(s) map out to all parallel branches. Mutates in-place.
+        """
         self.prop_grid *= forking_factor
         self.prop_grid = [deepcopy(e) for e in self.prop_grid]
         self.facts *= forking_factor
@@ -112,6 +136,9 @@ class Debate:
         self.num_branches *= forking_factor
 
     def establish(self, facts: Union[str, List[str]], branch: int = None):
+        """
+        Establishes the given facts in the target branch. Target to `None` branch to establish the same facts across all available parallel debates. Mutates in-place.
+        """
         if isinstance(facts, str):
             facts = [facts]
         if not branch:
@@ -133,6 +160,9 @@ class Debate:
         return "Hello world."
 
     def _clone(self):
+        """
+        Creates a mostly-deep copy of the current Debate object. The more heavy-weight models and the associated tokenizers are shallow-copied.
+        """
         d = Debate(model=self.model, tokenizer=self.tokenizer)
         for k, v in self.__dict__.items():
             d.__setattr__(k, v)
@@ -140,6 +170,9 @@ class Debate:
 
 
 def distance(d1: Union[Debate, str], d2: Union[Debate, str]):
+    """
+    Returns an estimate of the ideological distance between two selections of propositions.
+    """
     assert isinstance(d1, (Debate, str)) and isinstance(
         d2, (Debate, str)), "Distance can only be computed between objects which are either Debate objects or str."
     return 0.42
