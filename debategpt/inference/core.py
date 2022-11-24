@@ -115,7 +115,7 @@ class Debate:
         """
         for step_id in range(num_steps):
             for branch_id in range(self.num_branches):
-                prop = self.contribute(branch_id)
+                prop = self._contribute(branch_id)
                 self.prop_grid[branch_id][-1] += [prop]
 
             self.curr_party += 1
@@ -126,25 +126,7 @@ class Debate:
                     self.prop_grid[branch_id] += [[]]
 
     def transcript(self):
-        party_idx = self.sel_party
-        if self.sel_party == None:
-            party_idx = list(range(self.num_parties))
-        elif isinstance(party.sel_party, int):
-            party_idx = [party_idx]
-
-        round_idx = self.sel_round
-        if self.sel_round == None:
-            round_idx = list(range(self.curr_round))
-        elif isinstance(self.sel_round, tuple):
-            round_idx = list(range(*self.sel_round))
-        elif isinstance(self.sel_round, int):
-            round_idx = [round_idx]
-
-        branch_idx = self.sel_branch
-        if self.sel_branch == None:
-            branch_idx = list(range(self.num_branches))
-        elif isinstance(self.sel_branch, int):
-            branch_idx = [branch_idx]
+        party_idx, round_idx, branch_idx = self._sel_idx()
 
         transcript = ""
         for branch_id in branch_idx:
@@ -157,6 +139,32 @@ class Debate:
             transcript += f"\nBranch #{branch_id}\n\n{branch_transcript}---"
 
         return transcript
+
+    def render(self):
+        party_idx, round_idx, branch_idx = self._sel_idx()
+        obj_header = f"The table below denotes the allegiances established among the parties which took part in the debate. For instance, a high value at location (A, B) indicates that A supported B.\n\n/"
+        for target_id in party_idx:
+            obj_header += f"\t{self.aliases[target_id]}"
+
+        for source_id in party_idx:
+            obj_header += f"\n{self.aliases[source_id]}"
+            for target_id in party_idx:
+                obj_header += f"\t{self.objectives[source_id][target_id]}"
+
+        prompts = [obj_header] * len(branch_idx)
+        for branch_id in branch_idx:
+            if len(self.facts[branch_id]) > 0:
+                prompts[branch_id] += f"\n\nThe list below denotes facts which have been deemed established for the purpose of the debate.\n\n"
+                for fact in self.facts[branch_id]:
+                    prompts[branch_id] += f"- {fact}\n"
+
+            prompts[branch_id] += "\nThe rest of this document contains a transcript of the debate. For instance, a text prepended by \"A\" denotes a proposition contributed by party A.\n\n"
+            for round_id in round_idx:
+                for party_id in party_idx:
+                    if round_id < self.curr_round or party_id < self.curr_party:
+                        prompts[branch_id] += f"{self.aliases[party_id]}: {self.prop_grid[branch_id][round_id][party_id]}\n"
+
+        return prompts
 
     def fork(self, forking_factor: int = 2):
         """
@@ -189,7 +197,7 @@ class Debate:
     def graph(self):
         return None
 
-    def contribute(self, branch: int):
+    def _contribute(self, branch: int):
         return "Hello world."
 
     def _clone(self):
@@ -200,6 +208,29 @@ class Debate:
         for k, v in self.__dict__.items():
             d.__setattr__(k, v)
         return d
+
+    def _sel_idx(self):
+        party_idx = self.sel_party
+        if self.sel_party == None:
+            party_idx = list(range(self.num_parties))
+        elif isinstance(party.sel_party, int):
+            party_idx = [party_idx]
+
+        round_idx = self.sel_round
+        if self.sel_round == None:
+            round_idx = list(range(self.curr_round))
+        elif isinstance(self.sel_round, tuple):
+            round_idx = list(range(*self.sel_round))
+        elif isinstance(self.sel_round, int):
+            round_idx = [round_idx]
+
+        branch_idx = self.sel_branch
+        if self.sel_branch == None:
+            branch_idx = list(range(self.num_branches))
+        elif isinstance(self.sel_branch, int):
+            branch_idx = [branch_idx]
+
+        return party_idx, round_idx, branch_idx
 
 
 def distance(d1: Union[Debate, str], d2: Union[Debate, str]):

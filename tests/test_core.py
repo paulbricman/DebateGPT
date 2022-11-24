@@ -115,13 +115,27 @@ def test_distance(debate: Debate):
     distance(debate, "Test string")
 
 
-def test_transcript(debate:Debate):
+def test_transcript(debate: Debate):
     debate.play()
     t1 = debate.transcript()
-    debate.play()
+    debate.play(3)
     t2 = debate.transcript()
     debate.fork()
     t3 = debate.transcript()
+    t4 = debate.round(1, 2).transcript()
+
     assert len(t1) > 10
     assert len(t1) < len(t2)
     assert len(t2) < len(t3)
+    assert len(t4) < len(t3)
+
+
+def test_render(debate: Debate):
+    debate.establish(["This is established.", "This, too."])
+    debate.play(3)
+    debate.fork()
+
+    r = debate.render()
+    assert len(r) == debate.num_branches
+    assert r[0] == r[1]
+    assert len(r[0]) > 10
