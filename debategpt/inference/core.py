@@ -1,4 +1,4 @@
-from transformers import AutoModel, AutoTokenizer
+from transformers import AutoModel, AutoTokenizer, pipeline
 import string
 from copy import deepcopy
 from typing import Union, Tuple, List
@@ -10,7 +10,9 @@ class Debate:
             num_parties=2,
             objectives=None,
             model="distilgpt2",
-            tokenizer=None):
+            tokenizer=None,
+            nli_pipe=None
+    ):
         """
         Main Debate object used to run parallel debates, select propositions out of them (along party, round, and branch dimensions), etc.
         """
@@ -26,8 +28,14 @@ class Debate:
 
         if isinstance(tokenizer, str):
             self.tokenizer = AutoTokenizer.from_pretrained(tokenizer)
-        elif tokenizer is None:
+        elif not tokenizer:
             self.tokenizer = AutoTokenizer.from_pretrained(model)
+
+        self.nli_pipe = nli_pipe
+        if not nli_pipe:
+            self.nli_pipe = pipeline(
+                "zero-shot-classification",
+                model="cross-encoder/nli-deberta-v3-xsmall")
 
         self.curr_party = 0
         self.curr_round = 0
@@ -114,9 +122,9 @@ class Debate:
         Runs the debate(s) for `num_steps` individual steps, meaning that one should expect this many propositions being contributed to each parallel branch. Mutates in-place. Parallel debates are advanced in sync.
         """
         for step_id in range(num_steps):
+            props = self._contribute()
             for branch_id in range(self.num_branches):
-                prop = self._contribute(branch_id)
-                self.prop_grid[branch_id][-1] += [prop]
+                self.prop_grid[branch_id][-1] += [props[branch_id]]
 
             self.curr_party += 1
             if self.curr_party >= self.num_parties:
@@ -197,14 +205,14 @@ class Debate:
     def graph(self):
         return None
 
-    def _contribute(self, branch: int):
-        return "Hello world."
+    def _contribute(self):
+        return ["Hello world."] * self.num_branches
 
     def _clone(self):
         """
         Creates a mostly-deep copy of the current Debate object. The more heavy-weight models and the associated tokenizers are shallow-copied.
         """
-        d = Debate(model=self.model, tokenizer=self.tokenizer)
+        d = Debate(model=self.model, tokenizer=self.tokenizer, nli_pipe=self.nli_pipe)
         for k, v in self.__dict__.items():
             d.__setattr__(k, v)
         return d

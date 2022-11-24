@@ -19,14 +19,9 @@ def train() -> AcceleratePPOModel:
     config = TRLConfig.load_yaml("configs/debate_ft_config.yml")
     model: AcceleratePPOModel = get_model(config.model.model_type)(config)
 
-    nli_model = AutoModelForSequenceClassification.from_pretrained(
-        'cross-encoder/nli-deberta-v3-xsmall')
-    nli_tok = AutoTokenizer.from_pretrained(
-        'cross-encoder/nli-deberta-v3-xsmall')
     nli_pipe = pipeline(
         "zero-shot-classification",
-        model=nli_model,
-        tokenizer=nli_tok,
+        model="cross-encoder/nli-deberta-v3-xsmall",
         device=model.accelerator.device)
 
     orch = DebateOrchestrator(model, nli_pipe)
