@@ -16,7 +16,11 @@ class DebateOrchestrator(Orchestrator):
     """
     Orchestrator generates debate experience, packages them up in PPORLElements, and pushes them to the store.
     """
-    def __init__(self, model: BaseRLModel, nli_pipe: ZeroShotClassificationPipeline):
+
+    def __init__(
+            self,
+            model: BaseRLModel,
+            nli_pipe: ZeroShotClassificationPipeline):
         self.rl_model = model
         self.nli_pipe = nli_pipe
 
@@ -43,8 +47,9 @@ class DebateOrchestrator(Orchestrator):
         stats = {}
 
         experiences, facts, texts, clock = self.rollout_debate(debate_config,
-                                          clock)
-        experiences, mixings = reward(experiences, facts, debate_config, self.nli_pipe)
+                                                               clock)
+        experiences, mixings = reward(
+            experiences, facts, debate_config, self.nli_pipe)
 
         for round_id in range(debate_config["num_rounds"]):
             for party_id in range(debate_config["num_parties"]):
@@ -65,10 +70,11 @@ class DebateOrchestrator(Orchestrator):
         stats = {
             "exp_time": exp_time,
             "sample_debate": texts[0],
-            "sample_facts": "\n".join(facts[0]),
+            "sample_facts": "\n".join(
+                facts[0]),
             "sample_scores": experiences[0][0]["scores"][0],
-            "assortative_mixing_avg": sum(mixings) / debate_config["num_debates"]
-        }
+            "assortative_mixing_avg": sum(mixings) /
+            debate_config["num_debates"]}
         self.rl_model.accelerator.log(stats, step=iter_count)
         self.rl_model.push_to_store(ppo_rl_elements)
 
@@ -92,7 +98,7 @@ class DebateOrchestrator(Orchestrator):
                 (num_parties,
                  num_parties)), torch.ones(
                      (num_parties, num_parties))) * 0.25 +
-                          torch.eye(num_parties)).tolist()
+                torch.eye(num_parties)).tolist()
             objectives = [[round(e, 2) for e in f] for f in objectives]
 
             debate_configs += [{
@@ -189,8 +195,14 @@ class DebateOrchestrator(Orchestrator):
             "scores": [],
         }
 
-    def rollout_debate(self, debate_config: Dict[str, Any],
-                       clock: Clock) -> Tuple[List[List[Dict[str, Any]]], List[List[str]], List[str], Clock]:
+    def rollout_debate(self,
+                       debate_config: Dict[str,
+                                           Any],
+                       clock: Clock) -> Tuple[List[List[Dict[str,
+                                                             Any]]],
+                                              List[List[str]],
+                                              List[str],
+                                              Clock]:
         """
         Systematically generate propositions contributed by alternate parties for a number of rounds while keeping track of everything (e.g. logprobs, KLs, tokens, etc.).
 
@@ -228,7 +240,8 @@ class DebateOrchestrator(Orchestrator):
             List of headers (run)
             List of lists of facts (run)
         """
-        # Aliases and "allegiances" between parties are fixed across parallel debates
+        # Aliases and "allegiances" between parties are fixed across parallel
+        # debates
         objective_header = "".join([
             f"{aliases[e]}: {debate_config['objectives'][e]}\n"
             for e in range(debate_config["num_parties"])

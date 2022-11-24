@@ -58,7 +58,11 @@ def orch():
         'cross-encoder/nli-deberta-v3-xsmall')
     nli_tok = AutoTokenizer.from_pretrained(
         'cross-encoder/nli-deberta-v3-xsmall')
-    nli_pipe = pipeline("zero-shot-classification", model=nli_model, tokenizer=nli_tok, device=model.accelerator.device)
+    nli_pipe = pipeline(
+        "zero-shot-classification",
+        model=nli_model,
+        tokenizer=nli_tok,
+        device=model.accelerator.device)
 
     orch = DebateOrchestrator(model, nli_pipe)
     return orch
@@ -68,12 +72,12 @@ def orch():
 def dummy_props():
     # Two rounds, three parties, high internal coherence
     props = [
-        "Longtermism is amazing.", "Longtermism is stupid.",
+        "Longtermism is amazing.",
+        "Longtermism is stupid.",
         "Longtermism is some new philosophy.",
         "It is important to care about people living in the long-term future.",
         "It is useless to think of people who are not alive today.",
-        "Longtermism explores the idea of taking into account the well-being of future people."
-    ]
+        "Longtermism explores the idea of taking into account the well-being of future people."]
     return [props, props.copy()]
 
 
@@ -82,8 +86,7 @@ def dummy_facts():
     facts = [
         "Longtermism is a philosophy.",
         "It is likely that many people will live in the future.",
-        "It's more certain that there are people alive today than in the future."
-    ]
+        "It's more certain that there are people alive today than in the future."]
     return [facts, facts.copy()]
 
 
@@ -116,17 +119,26 @@ def test_enrich_experiences(ddc: Dict[str, Any], orch: DebateOrchestrator,
     ) == initial_final_reward + pageranks[0][0]
 
 
-def test_compute_arc_weights(dummy_props: List[List[str]], dummy_facts: List[List[str]], ddc: Dict[str,
-                                                                                                   Any], orch: DebateOrchestrator):
+def test_compute_arc_weights(dummy_props: List[List[str]],
+                             dummy_facts: List[List[str]],
+                             ddc: Dict[str,
+                                       Any],
+                             orch: DebateOrchestrator):
     weights = compute_arc_weights(dummy_props, dummy_facts, ddc, orch.nli_pipe)
 
     assert len(weights) == len(dummy_props)
-    assert len(weights[0]) == len(dummy_props[0]) * (len(dummy_props[0]) - 1) + len(dummy_props[0]) * len(dummy_facts[0])
+    assert len(weights[0]) == len(dummy_props[0]) * \
+        (len(dummy_props[0]) - 1) + len(dummy_props[0]) * len(dummy_facts[0])
     assert all([e[2] <= 1. and e[2] >= 0. for e in weights[0]])
 
 
-def test_compute_graphs(dummy_props: List[List[str]], dummy_facts: List[List[str]], ddc: Dict[str, Any], orch: DebateOrchestrator):
+def test_compute_graphs(dummy_props: List[List[str]],
+                        dummy_facts: List[List[str]],
+                        ddc: Dict[str,
+                                  Any],
+                        orch: DebateOrchestrator):
     graphs = compose_graphs(dummy_props, dummy_facts, ddc, orch.nli_pipe)
 
     assert len(graphs[0].nodes) == len(dummy_props[0]) + len(dummy_facts[0])
-    assert len(graphs[0].edges) == len(dummy_props[0]) * (len(dummy_props[0]) - 1) + len(dummy_props[0]) * len(dummy_facts[0])
+    assert len(graphs[0].edges) == len(dummy_props[0]) * \
+        (len(dummy_props[0]) - 1) + len(dummy_props[0]) * len(dummy_facts[0])

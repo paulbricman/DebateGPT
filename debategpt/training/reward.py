@@ -6,8 +6,8 @@ from transformers import pipeline
 from transformers import AutoTokenizer, AutoModelForSequenceClassification, ZeroShotClassificationPipeline
 
 
-def reward(experiences: List[List[Dict[str, Any]]], facts: List[List[str]],
-           debate_config: Dict[str, Any], nli_pipe: ZeroShotClassificationPipeline) -> Tuple[List[List[Dict[str, Any]]], List[float]]:
+def reward(experiences: List[List[Dict[str, Any]]], facts: List[List[str]], debate_config: Dict[str, Any],
+           nli_pipe: ZeroShotClassificationPipeline) -> Tuple[List[List[Dict[str, Any]]], List[float]]:
     """
     Coordinate the enrichment of experiences with rewards. In terms of terminology, reward in this codebase refers to the sum of KL penalties and domain-specific scores. Although the relevant aspects of debate configuration can be inferred from the structure of the `experiences` object, having to include it explicitly makes it clear that they have to share the same structure.
 
@@ -32,7 +32,11 @@ def reward(experiences: List[List[Dict[str, Any]]], facts: List[List[str]],
     return enriched_es, mixing
 
 
-def compose_graphs(props: List[List[str]], facts: List[List[str]], debate_config: Dict[str, Any], nli_pipe: ZeroShotClassificationPipeline) -> List[nx.classes.DiGraph]:
+def compose_graphs(props: List[List[str]],
+                   facts: List[List[str]],
+                   debate_config: Dict[str,
+                                       Any],
+                   nli_pipe: ZeroShotClassificationPipeline) -> List[nx.classes.DiGraph]:
     """
     Compose a weighted directed graph using networkx where nodes represent propositions and arc represent relations of support between them.
 
@@ -62,10 +66,16 @@ def compute_arc_weights(
     Returns:
         List of lists of outbound-inbound-weight triples defining arcs (run x weight)
     """
-    # Note: UserWarning: The sentencepiece tokenizer that you are converting to a fast tokenizer uses the byte fallback option which is not implemented in the fast tokenizers. In practice this means that the fast version of the tokenizer can produce unknown tokens whereas the sentencepiece version would have converted these unknown tokens into a sequence of byte tokens matching the original piece of text.
+    # Note: UserWarning: The sentencepiece tokenizer that you are converting
+    # to a fast tokenizer uses the byte fallback option which is not
+    # implemented in the fast tokenizers. In practice this means that the fast
+    # version of the tokenizer can produce unknown tokens whereas the
+    # sentencepiece version would have converted these unknown tokens into a
+    # sequence of byte tokens matching the original piece of text.
 
-    num_props_per_debate = debate_config["num_parties"] * debate_config["num_rounds"]
-    num_items_per_debate = num_props_per_debate  + debate_config["num_facts"]
+    num_props_per_debate = debate_config["num_parties"] * \
+        debate_config["num_rounds"]
+    num_items_per_debate = num_props_per_debate + debate_config["num_facts"]
 
     weighted_edges = []
     for run_props, run_facts in zip(props, facts):
@@ -81,14 +91,16 @@ def compute_arc_weights(
         for outbound_id in range(num_items_per_debate):
             for inbound_id in range(num_items_per_debate):
                 if outbound_id != inbound_id and inbound_id < num_props_per_debate:
-                    run_weights += [(outbound_id, inbound_id, round(run_scores[outbound_id]["scores"][inbound_id], 2))]
+                    run_weights += [(outbound_id, inbound_id,
+                                     round(run_scores[outbound_id]["scores"][inbound_id], 2))]
 
         weighted_edges += [run_weights]
 
     return weighted_edges
 
 
-def compute_pagerank(graphs: List[nx.classes.DiGraph], debate_config: Dict[str, Any]) -> List[List[float]]:
+def compute_pagerank(graphs: List[nx.classes.DiGraph],
+                     debate_config: Dict[str, Any]) -> List[List[float]]:
     """
     Run and wrangle data for PageRank on each graph representing a run.
 
@@ -102,9 +114,11 @@ def compute_pagerank(graphs: List[nx.classes.DiGraph], debate_config: Dict[str, 
     for run in pageranks:
         party_avgs = []
         for party in range(debate_config["num_parties"]):
-            party_sum = sum([run[party + round_id * debate_config["num_parties"]] for round_id in range(debate_config["num_rounds"])])
+            party_sum = sum([run[party + round_id * debate_config["num_parties"]]
+                            for round_id in range(debate_config["num_rounds"])])
             party_avg = party_sum / debate_config["num_rounds"]
-            party_avgs += [party_avg * debate_config["num_rounds"]] # Reward should be independent of prop count per party
+            # Reward should be independent of prop count per party
+            party_avgs += [party_avg * debate_config["num_rounds"]]
 
         objectives = torch.Tensor(debate_config["objectives"])
         party_avgs = torch.Tensor(party_avgs)
@@ -115,7 +129,8 @@ def compute_pagerank(graphs: List[nx.classes.DiGraph], debate_config: Dict[str, 
     return scores
 
 
-def compute_mixing(graphs: List[nx.classes.DiGraph], debate_config: Dict[str, Any]) -> List[float]:
+def compute_mixing(graphs: List[nx.classes.DiGraph],
+                   debate_config: Dict[str, Any]) -> List[float]:
     """
     Compute assortative mixing of each graph associated with a run.
 
@@ -130,7 +145,10 @@ def compute_mixing(graphs: List[nx.classes.DiGraph], debate_config: Dict[str, An
         G = G.copy()
         weights = [e[2] for e in G.edges.data("weight")]
         threshold = sum(weights) / len(weights)
-        long_edges = list(filter(lambda e: e[2] < threshold, (e for e in G.edges.data('weight'))))
+        long_edges = list(
+            filter(
+                lambda e: e[2] < threshold,
+                (e for e in G.edges.data('weight'))))
         le_ids = list(e[:2] for e in long_edges)
         G.remove_edges_from(le_ids)
 
@@ -147,7 +165,7 @@ def compute_mixing(graphs: List[nx.classes.DiGraph], debate_config: Dict[str, An
 def enrich_experiences(experiences: List[List[Dict[str,
                                               Any]]], scores: List[List[float]],
                        debate_config: Dict[str, Any]) -> List[List[Dict[str,
-                                              Any]]]:
+                                                                        Any]]]:
     """
     Tack scores on the final token of each experience.
 

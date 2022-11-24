@@ -23,7 +23,11 @@ def train() -> AcceleratePPOModel:
         'cross-encoder/nli-deberta-v3-xsmall')
     nli_tok = AutoTokenizer.from_pretrained(
         'cross-encoder/nli-deberta-v3-xsmall')
-    nli_pipe = pipeline("zero-shot-classification", model=nli_model, tokenizer=nli_tok, device=model.accelerator.device)
+    nli_pipe = pipeline(
+        "zero-shot-classification",
+        model=nli_model,
+        tokenizer=nli_tok,
+        device=model.accelerator.device)
 
     orch = DebateOrchestrator(model, nli_pipe)
 

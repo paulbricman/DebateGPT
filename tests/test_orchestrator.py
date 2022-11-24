@@ -20,7 +20,11 @@ def orch():
         'cross-encoder/nli-deberta-v3-xsmall')
     nli_tok = AutoTokenizer.from_pretrained(
         'cross-encoder/nli-deberta-v3-xsmall')
-    nli_pipe = pipeline("zero-shot-classification", model=nli_model, tokenizer=nli_tok, device=model.accelerator.device)
+    nli_pipe = pipeline(
+        "zero-shot-classification",
+        model=nli_model,
+        tokenizer=nli_tok,
+        device=model.accelerator.device)
 
     orch = DebateOrchestrator(model, nli_pipe)
     return orch
@@ -96,7 +100,8 @@ def test_generate_headers(orch: DebateOrchestrator, short_ddc: Dict[str, Any]):
     assert facts[0][0] != facts[0][1], "Facts seem identical, generation is off"
 
 
-def test_rollout_debate(orch: DebateOrchestrator, short_ddc: Dict[str, Any], long_ddc: Dict[str, Any]):
+def test_rollout_debate(orch: DebateOrchestrator,
+                        short_ddc: Dict[str, Any], long_ddc: Dict[str, Any]):
     clock = Clock()
     experiences, facts, texts, clock = orch.rollout_debate(short_ddc, clock)
     experience = experiences[0][0]
