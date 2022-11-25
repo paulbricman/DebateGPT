@@ -5,7 +5,7 @@ model:
   num_layers_unfrozen: 2  # Number of bottom layers to freeze during training
 
 train:
-  seq_length: 980  # Size of LM context for tok, presently overloaded
+  seq_length: 1024  # Size of LM context for tok, presently overloaded
   epochs: 16  # Highest level period (subsumes ppo_epochs passes through data)
   total_steps: 9999999999  # Train for min(this, epochs * ppo_epochs * experiences_per_epoch)
   batch_size: 2  # batch size for updating model on ppo_epoch experiences
@@ -38,5 +38,4 @@ method:
   scale_reward: True
   clip_reward: 10
   gen_kwargs:
-    max_new_tokens: 30
-    no_repeat_ngram_size: 3
+    max_length: 1337

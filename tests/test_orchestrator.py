@@ -96,7 +96,6 @@ def test_generate_headers(orch: DebateOrchestrator, short_ddc: Dict[str, Any]):
 
     assert len(headers) == 2
     assert len(headers[0]) > 10
-    assert len(re.findall("---", headers[0])) >= 2
     assert facts[0][0] != facts[0][1], "Facts seem identical, generation is off"
 
 
@@ -113,6 +112,8 @@ def test_rollout_debate(orch: DebateOrchestrator,
     assert len(experiences) == short_ddc["num_rounds"]
     assert len(experiences[0]) == short_ddc["num_parties"]
 
+    print(texts)
+
     experiences, facts, texts, clock = orch.rollout_debate(long_ddc, clock)
     experience = experiences[0][0]
 
@@ -122,3 +123,6 @@ def test_rollout_debate(orch: DebateOrchestrator,
 
     assert len(experiences) == long_ddc["num_rounds"]
     assert len(experiences[0]) == long_ddc["num_parties"]
+
+    print(texts)
+    assert False

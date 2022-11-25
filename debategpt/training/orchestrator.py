@@ -112,38 +112,33 @@ class DebateOrchestrator(Orchestrator):
         return debate_configs
 
     def ephemeral_generate(self,
-                           prompts: List[str],
-                           beams=True) -> Dict[str, Any]:
+                           prompts: List[str]) -> Dict[str, Any]:
         """
         Utility function which handles one step of generating rollout from prompts in parallel, including tracking logprobs and KLs. For the most part lifted from the source code of PPOOrchestrator.
 
         Returns:
             An experience
         """
+        min_new_toks, max_new_toks = 10, 30
+        self.rl_model.tokenizer.padding_side = "left"
         batch = self.rl_model.tokenizer(
             prompts,
             truncation=True,
             padding=True,
             return_tensors="pt",
-            max_length=self.rl_model.config.train.seq_length)
+            max_length= self.rl_model.config.train.seq_length - max_new_toks)
 
         newline_ids = [[198], [628]]
-        newsent_id = [[13]]  # .
-        if beams:
-            samples = self.rl_model.generate(
-                **batch,
-                bad_words_ids=newline_ids,
-                force_words_ids=newsent_id,
-                num_beams=3,
-                min_length=batch["input_ids"].size(1) + 10,
-            )
-        else:
-            samples = self.rl_model.generate(
-                **batch,
-                do_sample=True,
-                num_beams=1,
-                min_length=batch["input_ids"].size(1) + 10,
-            )
+
+        samples = self.rl_model.generate(
+            **batch,
+            bad_words_ids=newline_ids,
+            do_sample=True,
+            num_beams=1,
+            no_repeat_ngram_size = 3,
+            min_length=batch["input_ids"].size(1) + min_new_toks,
+            max_length=batch["input_ids"].size(1) + max_new_toks,
+        )
 
         # Wrangle
         query_tensors = batch.input_ids
@@ -240,30 +235,45 @@ class DebateOrchestrator(Orchestrator):
             List of headers (run)
             List of lists of facts (run)
         """
-        # Aliases and "allegiances" between parties are fixed across parallel
-        # debates
-        objective_header = "".join([
-            f"{aliases[e]}: {debate_config['objectives'][e]}\n"
-            for e in range(debate_config["num_parties"])
-        ])
-        objective_header = f"Objectives\n\n{objective_header}---\n"
+        party_idx = list(range(debate_config["num_parties"]))
+        branch_idx = list(range(debate_config["num_debates"]))
+        objectives = debate_config["objectives"]
+
+        obj_header = f"The table below denotes the allegiances established among the parties which took part in the debate. For instance, a high value at location (A, B) indicates that A supported B.\n\nx"
+        for target_id in party_idx:
+            obj_header += f"\t{aliases[target_id]}"
+
+        for source_id in party_idx:
+            obj_header += f"\n{aliases[source_id]}"
+            for target_id in party_idx:
+                obj_header += f"\t{objectives[source_id][target_id]}"
+
+        prompts = [obj_header] * len(branch_idx)
 
         # Each debate runs with unique facts
-        fact_prompt = "This is a list of established facts about the world:\n\n1."
+        fact_prompt = "The following is a list of established facts about the world. It spans science, humanities, and many other diverse fields:\n\n1."
         fact_prompts = [
             fact_prompt
         ] * debate_config["num_facts"] * debate_config["num_debates"]
-        facts = self.ephemeral_generate(fact_prompts, beams=False)["texts"]
+        facts = self.ephemeral_generate(fact_prompts)["texts"]
         facts = [e.split("\n")[0].strip() for e in facts]
+
+
         fact_headers = [
             facts[e * debate_config["num_facts"]:(e + 1) *
                   debate_config["num_facts"]]
             for e in range(debate_config["num_debates"])
         ]
         raw_facts = fact_headers
-        fact_headers = ["".join(f"- {e}\n" for e in f) for f in fact_headers]
-        fact_headers = [f"Facts\n\n{e}---Debate\n\n" for e in fact_headers]
 
-        # Combine objective and fact headers
-        headers = [objective_header + e for e in fact_headers]
-        return headers, raw_facts
+        for branch_id in branch_idx:
+            if len(fact_headers[branch_id]) > 0:
+                prompts[branch_id] += f"\n\nThe list below denotes facts which have been deemed established for the purpose of the debate.\n\n"
+                for fact in fact_headers[branch_id]:
+                    prompts[branch_id] += f"- {fact}\n"
+            else:
+                prompts[branch_id] += "\n"
+
+            prompts[branch_id] += "\nThe rest of this document contains a transcript of the debate in the context of the facts listed above. This is what the parties said:\n\n"
+
+        return prompts, raw_facts

@@ -1,4 +1,4 @@
-from transformers import AutoModel, AutoTokenizer, pipeline
+from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
 import string
 from copy import deepcopy
 from typing import Union, Tuple, List
@@ -24,12 +24,16 @@ class Debate:
             self.objectives = [[1, 0], [0, 1]]
 
         if isinstance(model, str):
-            self.model = AutoModel.from_pretrained(model)
+            self.model = AutoModelForCausalLM.from_pretrained(model)
 
+        self.tokenizer = tokenizer
         if isinstance(tokenizer, str):
             self.tokenizer = AutoTokenizer.from_pretrained(tokenizer)
         elif not tokenizer:
             self.tokenizer = AutoTokenizer.from_pretrained(model)
+
+        self.tokenizer.pad_token = self.tokenizer.eos_token
+        self.tokenizer.padding_side = "left"
 
         self.nli_pipe = nli_pipe
         if not nli_pipe:
@@ -150,7 +154,7 @@ class Debate:
 
     def render(self):
         party_idx, round_idx, branch_idx = self._sel_idx()
-        obj_header = f"The table below denotes the allegiances established among the parties which took part in the debate. For instance, a high value at location (A, B) indicates that A supported B.\n\n/"
+        obj_header = f"The table below denotes the allegiances established among the parties which took part in the debate. For instance, a high value at location (A, B) indicates that A supported B.\n\nx"
         for target_id in party_idx:
             obj_header += f"\t{self.aliases[target_id]}"
 
@@ -165,8 +169,10 @@ class Debate:
                 prompts[branch_id] += f"\n\nThe list below denotes facts which have been deemed established for the purpose of the debate.\n\n"
                 for fact in self.facts[branch_id]:
                     prompts[branch_id] += f"- {fact}\n"
+            else:
+                prompts[branch_id] += "\n"
 
-            prompts[branch_id] += "\nThe rest of this document contains a transcript of the debate. For instance, a text prepended by \"A\" denotes a proposition contributed by party A.\n\n"
+            prompts[branch_id] += "\nThe rest of this document contains a transcript of the debate in the context of the facts listed above. This is what the parties said:\n\n"
             for round_id in round_idx:
                 for party_id in party_idx:
                     if round_id < self.curr_round or party_id < self.curr_party:
@@ -206,7 +212,32 @@ class Debate:
         return None
 
     def _contribute(self):
-        return ["Hello world."] * self.num_branches
+        min_new_toks, max_new_toks = 10, 30
+        prompts = self.render()
+        batch = self.tokenizer(
+            prompts,
+            truncation=True,
+            padding=True,
+            return_tensors="pt",
+            max_length=self.model.config.n_ctx - max_new_toks)
+
+        newline_ids = [[198], [628]]
+        samples = self.model.generate(
+            batch["input_ids"],
+            bad_words_ids=newline_ids,
+            do_sample=True,
+            num_beams=1,
+            no_repeat_ngram_size = 3,
+            min_length=batch["input_ids"].size(1) + min_new_toks,
+            max_length=batch["input_ids"].size(1) + max_new_toks,
+        )
+
+        query_tensors = batch.input_ids
+        response_tensors = samples[:, query_tensors.shape[1]:]
+        props = self.tokenizer.batch_decode(response_tensors,
+                                                     skip_special_tokens=True)
+
+        return props
 
     def _clone(self):
         """
