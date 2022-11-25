@@ -1,15 +1,14 @@
-
 model:
-  model_path: "EleutherAI/gpt-j-6B"  # Name of hf model to load
-  tokenizer_path: "EleutherAI/gpt-j-6B"  # Name of hf tokenizer to load
+  model_path: "gpt2-xl"  # Name of hf model to load
+  tokenizer_path: "gpt2-xl"  # Name of hf tokenizer to load
   model_type: "AcceleratePPOModel"  # Name of accelerate model type to load
   num_layers_unfrozen: 2  # Number of bottom layers to freeze during training
 
 train:
-  seq_length: 2000  # Size of LM context
-  epochs: 1000  # Train for max(epochs, total_steps)
+  seq_length: 1024  # Size of LM context
+  epochs: 2  # Train for max(epochs, total_steps)
   total_steps: 99999999999  # Train for max(epochs, total_steps)
-  batch_size: 128  # batch size
+  batch_size: 4  # batch size
 
   lr_init: 1.412e-4  # init learning rate
   lr_target: 1.412e-4  # target final learning rate
@@ -27,7 +26,7 @@ method:
   name: 'ppoconfig'  # Name of RL method config
   num_rollouts: 128  # Number of rollouts to collect per epoch
   chunk_size: 128  # Number of rollouts to collect in one loop of orchestrator
-  ppo_epochs: 4  # Number of ppo epochs
+  ppo_epochs: 2  # Number of ppo epochs
   init_kl_coef: 0.2  # init kl coefficient
   target: 6  # target kl coefficient, set None for fixed kl coef
   horizon: 10000  # PPO horizon
@@ -39,5 +38,4 @@ method:
   scale_reward: True
   clip_reward: 10
   gen_kwargs:
-    max_new_tokens: 30
-    no_repeat_ngram_size: 3
+    max_length: 1337
