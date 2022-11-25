@@ -126,7 +126,7 @@ class DebateOrchestrator(Orchestrator):
             truncation=True,
             padding=True,
             return_tensors="pt",
-            max_length= self.rl_model.config.train.seq_length - max_new_toks)
+            max_length= self.rl_model.config.train.seq_length - max_new_toks - 10)
 
         newline_ids = [[198], [628]]
 
@@ -137,7 +137,8 @@ class DebateOrchestrator(Orchestrator):
             num_beams=1,
             no_repeat_ngram_size = 3,
             min_length=batch["input_ids"].size(1) + min_new_toks,
-            max_length=batch["input_ids"].size(1) + max_new_toks,
+            # max_length=batch["input_ids"].size(1) + max_new_toks,
+            max_new_tokens = max_new_toks
         )
 
         # Wrangle

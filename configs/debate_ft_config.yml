@@ -40,4 +40,4 @@ method:
   ref_std: null # rescale rewards with this deviation
   cliprange_reward: 10
   gen_kwargs:
-    max_length: 1337
+    min_length: 10

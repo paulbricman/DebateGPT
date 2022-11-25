@@ -5,8 +5,8 @@ model:
   num_layers_unfrozen: 2  # Number of bottom layers to freeze during training
 
 train:
-  seq_length: 1024  # Size of LM context
-  epochs: 2  # Train for max(epochs, total_steps)
+  seq_length: 990  # Size of LM context
+  epochs: 128  # Train for max(epochs, total_steps)
   total_steps: 99999999999  # Train for max(epochs, total_steps)
   batch_size: 4  # batch size
 
@@ -40,4 +40,4 @@ method:
   ref_std: null # rescale rewards with this deviation
   cliprange_reward: 10
   gen_kwargs:
-    max_length: 1337
+    min_length: 10
