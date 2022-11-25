@@ -86,7 +86,7 @@ class DebateOrchestrator(Orchestrator):
             List of debate configs
         """
         random.seed(0)
-        num_debate_config_types = 2
+        num_debate_config_types = 16
         num_debates = 2
         debate_configs = []
 
@@ -128,14 +128,14 @@ class DebateOrchestrator(Orchestrator):
             return_tensors="pt",
             max_length= self.rl_model.config.train.seq_length - max_new_toks - 10)
 
-        newline_ids = [[198], [628]]
+        bad_ids = [[198], [628], [12429], [25998], [14], [16410], [26], [20379], [1058], [685], [3373], [17202], [1220], [14808], [34013], [7904], [1635], [357], [9705], [1003], [366]]
 
         samples = self.rl_model.generate(
             **batch,
-            bad_words_ids=newline_ids,
+            bad_words_ids=bad_ids,
             do_sample=True,
             num_beams=1,
-            no_repeat_ngram_size = 3,
+            no_repeat_ngram_size = 2,
             min_length=batch["input_ids"].size(1) + min_new_toks,
             # max_length=batch["input_ids"].size(1) + max_new_toks,
             max_new_tokens = max_new_toks
