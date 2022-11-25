@@ -10,6 +10,7 @@ from trlx.utils import Clock
 from trlx.utils.modeling import logprobs_from_logits
 from debategpt.training.reward import reward
 from transformers import ZeroShotClassificationPipeline
+import pandas as pd
 
 
 class DebateOrchestrator(Orchestrator):
@@ -69,9 +70,8 @@ class DebateOrchestrator(Orchestrator):
         exp_time = clock.tick()
         stats = {
             "exp_time": exp_time,
-            "sample_debate": texts[0],
-            "sample_facts": "\n".join(
-                facts[0]),
+            "sample_debates": pd.DataFrame(texts),
+            "sample_facts": pd.DataFrame(facts),
             "sample_scores": experiences[0][0]["scores"][0],
             "assortative_mixing_avg": sum(mixings) /
             debate_config["num_debates"]}
