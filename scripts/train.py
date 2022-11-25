@@ -1,4 +1,4 @@
-import src.trainer as trainer
+import debategpt.training.trainer as trainer
 import wandb
 
 
