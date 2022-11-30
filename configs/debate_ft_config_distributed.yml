@@ -6,7 +6,7 @@ model:
 
 train:
   seq_length: 990  # Size of LM context
-  epochs: 128  # Train for max(epochs, total_steps)
+  epochs: 32  # Train for max(epochs, total_steps)
   total_steps: 99999999999  # Train for max(epochs, total_steps)
   batch_size: 4  # batch size
 

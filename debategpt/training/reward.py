@@ -27,6 +27,7 @@ def reward(experiences: List[List[Dict[str, Any]]], facts: List[List[str]], deba
 
     graphs = compose_graphs(props, facts, debate_config, nli_pipe)
     scores = compute_pagerank(graphs, debate_config)
+    scores = sanitize_scores(props, scores)
     mixing = compute_mixing(graphs, debate_config)
     enriched_es = enrich_experiences(experiences, scores, debate_config)
     return enriched_es, mixing
@@ -125,6 +126,17 @@ def compute_pagerank(graphs: List[nx.classes.DiGraph],
         adjusted_party_scores = (party_avgs @ objectives).tolist()
 
         scores += [adjusted_party_scores * debate_config["num_rounds"]]
+
+    return scores
+
+
+def sanitize_scores(props: List[List[str]], scores: List[List[float]]) -> List[List[float]]:
+    for run_id, run in enumerate(props):
+        for prop_id, prop in enumerate(run):
+            plain = prop.replace(".", "").replace(",", "")
+            legal = all([word.isalpha() for word in plain.split()])
+            if not legal:
+                scores[run_id][prop_id] = -1.
 
     return scores
 

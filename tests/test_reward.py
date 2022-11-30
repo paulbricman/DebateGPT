@@ -2,7 +2,7 @@ from typing import List, Any, Dict
 import networkx as nx
 import pytest
 
-from debategpt.training.reward import compute_pagerank, compute_mixing, enrich_experiences, compute_arc_weights, compose_graphs
+from debategpt.training.reward import compute_pagerank, compute_mixing, enrich_experiences, compute_arc_weights, compose_graphs, sanitize_scores
 from debategpt.training.orchestrator import DebateOrchestrator
 from trlx.utils import Clock
 from trlx.data.configs import TRLConfig
@@ -95,6 +95,17 @@ def test_compute_pagerank(dummy_graphs: List[Any], ddc: Dict[str, Any]):
 
     assert pageranks[0][0] == pageranks[0][ddc["num_parties"]]
     assert pageranks[0] == pageranks[1]
+
+
+def test_sanitize_scores():
+    legal_props = ["Hello, yes indeed.", "For sure"]
+    illegal_props = ["123", ":::"]
+    props = [legal_props, illegal_props]
+    scores = [[0.5, 0.5], [0.5, 0.5]]
+    scores = sanitize_scores(props, scores)
+
+    assert all([e != -1. for e in scores[0]])
+    assert all([e == -1. for e in scores[1]])
 
 
 def test_compute_mixing(dummy_graphs: List[Any], ddc: Dict[str, Any]):
