@@ -92,8 +92,10 @@ def compute_arc_weights(
         for outbound_id in range(num_items_per_debate):
             for inbound_id in range(num_items_per_debate):
                 if outbound_id != inbound_id and inbound_id < num_props_per_debate:
+                    ref_in_id = run_scores[outbound_id]["labels"].index(run_items[inbound_id])
+
                     run_weights += [(outbound_id, inbound_id,
-                                     round(run_scores[outbound_id]["scores"][inbound_id], 2))]
+                                     round(run_scores[outbound_id]["scores"][ref_in_id], 2))]
 
         weighted_edges += [run_weights]
 
@@ -123,7 +125,7 @@ def compute_pagerank(graphs: List[nx.classes.DiGraph],
 
         objectives = torch.Tensor(debate_config["objectives"])
         party_avgs = torch.Tensor(party_avgs)
-        adjusted_party_scores = (party_avgs @ objectives).tolist()
+        adjusted_party_scores = (party_avgs @ objectives.T).tolist()
 
         scores += [adjusted_party_scores * debate_config["num_rounds"]]
 
@@ -135,7 +137,8 @@ def sanitize_scores(props: List[List[str]], scores: List[List[float]]) -> List[L
         for prop_id, prop in enumerate(run):
             plain = prop.replace(".", "").replace(",", "")
             legal = all([word.isalpha() for word in plain.split()])
-            if not legal:
+            one_period = len([e for e in prop if e == "."]) == 1
+            if not one_period or not legal:
                 scores[run_id][prop_id] = -1.
 
     return scores

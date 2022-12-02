@@ -54,14 +54,9 @@ def ddc():
 def orch():
     config = TRLConfig.load_yaml("../configs/debate_ft_config.yml")
     model: AcceleratePPOModel = get_model(config.model.model_type)(config)
-    nli_model = AutoModelForSequenceClassification.from_pretrained(
-        'cross-encoder/nli-deberta-v3-xsmall')
-    nli_tok = AutoTokenizer.from_pretrained(
-        'cross-encoder/nli-deberta-v3-xsmall')
     nli_pipe = pipeline(
         "zero-shot-classification",
-        model=nli_model,
-        tokenizer=nli_tok,
+        model="cross-encoder/nli-deberta-v3-small",
         device=model.accelerator.device)
 
     orch = DebateOrchestrator(model, nli_pipe)
@@ -82,6 +77,37 @@ def dummy_props():
 
 
 @pytest.fixture
+def handholding(ddc):
+    ddc = {
+        "num_debates": 1,
+        "num_parties": 2,
+        "num_rounds": 3,
+        "num_facts": 3,
+        "objectives": [
+            [1, 0],
+            [0, 1],
+        ]
+    }
+
+    facts = [
+        "The Earth is round.",
+        "Earth's shadow on the moon is curved.",
+        "Ships tend to dissapear under the horizon."
+    ]
+
+    props = [
+        "The Earth is flat.",
+        "The Earth is not flat, as Earth's shadow on the moon is curved.",
+        "I dunno, the Earth feels flat to me.",
+        "Intuitive physics tends to break down at Earth's scale. As another argument, consider ships disappearing under the horizon.",
+        "Myeah, but it still seems flat here.",
+        "It does seem so, but in reality all evidence points at Earth being round, not flat."
+    ]
+
+    return ddc, [facts], [props]
+
+
+@pytest.fixture
 def dummy_facts():
     facts = [
         "Longtermism is a philosophy.",
@@ -98,8 +124,8 @@ def test_compute_pagerank(dummy_graphs: List[Any], ddc: Dict[str, Any]):
 
 
 def test_sanitize_scores():
-    legal_props = ["Hello, yes indeed.", "For sure"]
-    illegal_props = ["123", ":::"]
+    legal_props = ["Hello, yes indeed.", "For sure."]
+    illegal_props = ["123", "For sure"]
     props = [legal_props, illegal_props]
     scores = [[0.5, 0.5], [0.5, 0.5]]
     scores = sanitize_scores(props, scores)
@@ -153,3 +179,18 @@ def test_compute_graphs(dummy_props: List[List[str]],
     assert len(graphs[0].nodes) == len(dummy_props[0]) + len(dummy_facts[0])
     assert len(graphs[0].edges) == len(dummy_props[0]) * \
         (len(dummy_props[0]) - 1) + len(dummy_props[0]) * len(dummy_facts[0])
+
+
+# def test_handholding(handholding, orch: DebateOrchestrator):
+#     ddc, facts, props = handholding
+#     graphs = compose_graphs(props, facts, ddc, orch.nli_pipe)
+#     weights = list(graphs[0].edges.data())
+#     pageranks = compute_pagerank(graphs, ddc)
+
+#     print(*facts[0], sep="\n")
+#     print()
+
+#     for pr, prop in zip(pageranks[0], props[0]):
+#         print(round(pr, 2), prop)
+
+#     assert False
