@@ -109,12 +109,6 @@ def test_establish(debate: Debate):
     assert len(debate.facts[1]) == 5
 
 
-def test_distance(debate: Debate):
-    distance(debate, debate)
-    distance("Test string", debate)
-    distance(debate, "Test string")
-
-
 def test_transcript(debate: Debate):
     debate.play()
     t1 = debate.transcript()
@@ -139,3 +133,21 @@ def test_render(debate: Debate):
     assert len(r) == debate.num_branches
     assert r[0] == r[1]
     assert len(r[0]) > 10
+
+
+def test_distance(debate: Debate):
+    debate.play(3)
+
+    d1 = debate.party(0)
+    d2 = debate.party(1)
+
+    assert distance(d1, d2) == distance(d2, d1)
+
+    prop1 = "The Earth is round."
+    prop2 = "The Earth is flat."
+    dist1 = distance(d1, prop1)
+
+    assert distance(prop1, prop2) == distance(prop2, prop1)
+    assert dist1 == distance(prop1, d1)
+    assert dist1 != distance(d1, prop2)
+    assert dist1 >= 0 and dist1 <= 1

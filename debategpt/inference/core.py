@@ -113,6 +113,17 @@ class Debate:
             "branch": self.sel_branch,
         }
 
+    def flattened_props(self):
+        party_idx, round_idx, branch_idx  = self._sel_idx()
+        props = []
+
+        for branch_id in branch_idx:
+            for round_id in round_idx:
+                for party_id in party_idx:
+                    props += [self.prop_grid[branch_id][round_id][party_id]]
+
+        return props
+
     def play(self, num_rounds: int = 1):
         """
         Runs the debate(s) for `num_rounds` rounds. If not on fresh new round, then the result will have the same current party. Mutates in-place. Parallel debates are advanced in sync.
@@ -252,7 +263,7 @@ class Debate:
         party_idx = self.sel_party
         if self.sel_party == None:
             party_idx = list(range(self.num_parties))
-        elif isinstance(party.sel_party, int):
+        elif isinstance(self.sel_party, int):
             party_idx = [party_idx]
 
         round_idx = self.sel_round
@@ -278,4 +289,31 @@ def distance(d1: Union[Debate, str], d2: Union[Debate, str]):
     """
     assert isinstance(d1, (Debate, str)) and isinstance(
         d2, (Debate, str)), "Distance can only be computed between objects which are either Debate objects or str."
-    return 0.42
+
+    if isinstance(d1, str):
+        props1 = [d1]
+    else:
+        props1 = d1.flattened_props()
+
+    if isinstance(d2, str):
+        props2 = [d2]
+    else:
+        props2 = d2.flattened_props()
+
+    nli_pipe = None
+    if isinstance(d1, Debate):
+        nli_pipe = d1.nli_pipe
+    elif isinstance(d2, Debate):
+        nli_pipe = d2.nli_pipe
+    else:
+        nli_pipe = pipeline(
+                "zero-shot-classification",
+                model="cross-encoder/nli-deberta-v3-xsmall")
+
+    scores1 = nli_pipe(props1, props2, multi_label=True, hypothesis_template="{}")
+    scores2 = nli_pipe(props2, props1, multi_label=True, hypothesis_template="{}")
+    scores = [e["scores"] for e in scores1] + [e["scores"] for e in scores2]
+    scores = [e for f in scores for e in f]
+    score = sum(scores) / len(scores)
+
+    return score
