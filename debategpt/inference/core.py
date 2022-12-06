@@ -2,7 +2,7 @@ from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
 import string
 from copy import deepcopy
 from typing import Union, Tuple, List
-
+import networkx as nx
 
 class Debate:
     def __init__(
@@ -124,6 +124,21 @@ class Debate:
 
         return props
 
+    def props(self):
+        party_idx, round_idx, branch_idx  = self._sel_idx()
+        props = []
+
+        for branch_id in branch_idx:
+            branch = []
+            for round_id in round_idx:
+                round = []
+                for party_id in party_idx:
+                    round += [self.prop_grid[branch_id][round_id][party_id]]
+                branch += [round]
+            props += [branch]
+
+        return props
+
     def play(self, num_rounds: int = 1):
         """
         Runs the debate(s) for `num_rounds` rounds. If not on fresh new round, then the result will have the same current party. Mutates in-place. Parallel debates are advanced in sync.
@@ -220,7 +235,62 @@ class Debate:
             self.facts[branch] += facts
 
     def graph(self):
-        return None
+        party_idx, round_idx, branch_idx = self._sel_idx()
+        Gs = []
+        for branch_id in branch_idx:
+            G = nx.DiGraph()
+            num_props = len(round_idx) * len(party_idx)
+            num_items = num_props + len(self.facts[branch_id])
+            G.add_nodes_from(range(num_items))
+
+            item_type = {}
+            item_content = {}
+            item_party = {}
+            item_round = {}
+
+            for round_id in round_idx:
+                for party_id in party_idx:
+                    node_id = round_id * len(party_idx) + party_id
+
+                    item_type[node_id] = "contribution"
+                    item_content[node_id] = self.prop_grid[branch_id][round_id][party_id]
+                    item_party[node_id] = party_id
+                    item_round[node_id] = round_id
+
+            for fact_id, fact in enumerate(self.facts[branch_id]):
+                item_type[fact_id + num_props] = "fact"
+                item_content[fact_id + num_props] = fact
+                item_party[fact_id + num_props] = -1
+                item_round[fact_id + num_props] = -1
+
+            nx.set_node_attributes(G, item_type, "type")
+            nx.set_node_attributes(G, item_content, "content")
+            nx.set_node_attributes(G, item_party, "party")
+            nx.set_node_attributes(G, item_round, "round")
+
+            weighted_edges = []
+            run_items = self.branch(branch_id).flattened_props() + self.facts[branch_id]
+            run_items = [e if e != "" else "?" for e in run_items]
+            run_scores = self.nli_pipe(
+                run_items,
+                run_items,
+                multi_label=True,
+                hypothesis_template="{}")
+
+            run_weights = []
+            for outbound_id in range(num_items):
+                for inbound_id in range(num_items):
+                    if outbound_id != inbound_id and inbound_id < num_props:
+                        ref_in_id = run_scores[outbound_id]["labels"].index(run_items[inbound_id])
+                        run_weights += [(outbound_id, inbound_id,
+                                         round(run_scores[outbound_id]["scores"][ref_in_id], 2))]
+
+            G.add_weighted_edges_from(run_weights)
+            pageranks = nx.pagerank(G)
+            nx.set_node_attributes(G, pageranks, "score")
+            Gs += [G]
+
+        return Gs
 
     def _contribute(self):
         min_new_toks, max_new_toks = 10, 30

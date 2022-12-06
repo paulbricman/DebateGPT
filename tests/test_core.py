@@ -151,3 +151,23 @@ def test_distance(debate: Debate):
     assert dist1 == distance(prop1, d1)
     assert dist1 != distance(d1, prop2)
     assert dist1 >= 0 and dist1 <= 1
+
+
+def test_graph(debate: Debate):
+    debate.establish(["The Earth is round."])
+    debate.fork()
+    debate.play(3)
+    Gs = debate.graph()
+    G = Gs[0]
+
+    assert len(Gs) == 2
+    assert G.nodes[0]["party"] == 0
+    assert G.nodes[2]["round"] == 1
+    assert G.nodes[1]["content"] == debate.branch(0).round(0).party(1).flattened_props()[0]
+    assert G.nodes[6]["type"] == "fact"
+    assert G.nodes[0]["type"] == "contribution"
+
+    weights = [e[2] for e in G.edges(data=True)]
+
+    assert all([e["weight"] <= 1. and e["weight"] >= 0. for e in weights])
+    assert G.nodes[0]["score"] <= 1.
