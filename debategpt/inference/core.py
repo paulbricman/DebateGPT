@@ -114,6 +114,9 @@ class Debate:
         }
 
     def flattened_props(self):
+        """
+        Same as self.props(), but with objects flattened in a single list.
+        """
         party_idx, round_idx, branch_idx  = self._sel_idx()
         props = []
 
@@ -125,6 +128,9 @@ class Debate:
         return props
 
     def props(self):
+        """
+        Return an object with the same structure as self.prop_grid, but with the selectors applied.
+        """
         party_idx, round_idx, branch_idx  = self._sel_idx()
         props = []
 
@@ -164,6 +170,9 @@ class Debate:
                     self.prop_grid[branch_id] += [[]]
 
     def transcript(self):
+        """
+        Generate debate transcript of selection for human debugging.
+        """
         party_idx, round_idx, branch_idx = self._sel_idx()
 
         transcript = ""
@@ -235,6 +244,9 @@ class Debate:
             self.facts[branch] += facts
 
     def graph(self):
+        """
+        Return argument graph for each branch.
+        """
         party_idx, round_idx, branch_idx = self._sel_idx()
         Gs = []
         for branch_id in branch_idx:
@@ -293,6 +305,9 @@ class Debate:
         return Gs
 
     def _contribute(self):
+        """
+        Generate a new contribution across branches.
+        """
         min_new_toks, max_new_toks = 10, 30
         prompts = self.render()
         batch = self.tokenizer(
@@ -330,6 +345,9 @@ class Debate:
         return d
 
     def _sel_idx(self):
+        """
+        Return lists of indices based on current selection (as opposed to having a range).
+        """
         party_idx = self.sel_party
         if self.sel_party == None:
             party_idx = list(range(self.num_parties))
