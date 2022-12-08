@@ -147,18 +147,27 @@ class DebateOrchestrator(Orchestrator):
         response_tensors = samples[:, query_tensors.shape[1]:]
         texts = self.rl_model.tokenizer.batch_decode(response_tensors,
                                                      skip_special_tokens=True)
-        all_tokens = torch.cat(
-            (query_tensors.to(samples.device), response_tensors), dim=1)
 
-        # Handle logprobs
+        all_tokens, attention_mask, position_ids = self.rl_model.get_model_inputs(
+            query_tensors.to(response_tensors.device), response_tensors
+        )
         with torch.no_grad():
-            logits, _, v = self.rl_model.model(all_tokens)
-
+            logits, *_, v = self.rl_model.model(
+                all_tokens, attention_mask=attention_mask, position_ids=position_ids
+            )
             if hasattr(self.rl_model.model, "frozen_head"):
                 ref_logits = self.rl_model.model.forward_hydra(
-                    all_tokens, return_dict=False)
+                    all_tokens,
+                    attention_mask=attention_mask,
+                    position_ids=position_ids,
+                    return_dict=False,
+                )
             else:
-                ref_logits, _, _ = self.ref_model(all_tokens.cpu())
+                ref_logits, _, *_ = self.ref_model(
+                    all_tokens.cpu(),
+                    attention_mask=attention_mask.cpu(),
+                    position_ids=position_ids.cpu(),
+                )
 
         ref_logits = ref_logits.to(self.rl_model.accelerator.device)
         logprobs = logprobs_from_logits(logits[:, :-1, :], all_tokens[:, 1:])
