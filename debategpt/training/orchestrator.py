@@ -262,7 +262,7 @@ class DebateOrchestrator(Orchestrator):
         prompts = [obj_header] * len(branch_idx)
 
         # Each debate runs with unique facts
-        fact_prompt = "The following is a list of established facts about the world. It spans science, humanities, and many other diverse fields:\n\n1."
+        fact_prompt = "The following is a list of concise established facts about the world, one single sentence each. They span science, humanities, and many other diverse fields:\n\n1."
         fact_prompts = [
             fact_prompt
         ] * debate_config["num_facts"] * debate_config["num_debates"]
@@ -285,6 +285,6 @@ class DebateOrchestrator(Orchestrator):
             else:
                 prompts[branch_id] += "\n"
 
-            prompts[branch_id] += "\nThe rest of this document contains a transcript of the debate in the context of the facts listed above. This is what the parties said:\n\n"
+            prompts[branch_id] += "\nThe rest of this document contains a transcript of the debate in the context of the facts listed above, each brief utterance being one sentence long. This is what the parties said:\n\n"
 
         return prompts, raw_facts

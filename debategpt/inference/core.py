@@ -207,7 +207,7 @@ class Debate:
             else:
                 prompts[branch_id] += "\n"
 
-            prompts[branch_id] += "\nThe rest of this document contains a transcript of the debate in the context of the facts listed above. This is what the parties said:\n\n"
+            prompts[branch_id] += "\nThe rest of this document contains a transcript of the debate in the context of the facts listed above, each brief utterance being one sentence long. This is what the parties said:\n\n"
             for round_id in round_idx:
                 for party_id in party_idx:
                     if round_id < self.curr_round or party_id < self.curr_party:
