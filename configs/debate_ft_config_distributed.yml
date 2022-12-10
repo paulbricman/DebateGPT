@@ -1,11 +1,11 @@
 model:
-  model_path: "gpt2-xl"  # Name of hf model to load
-  tokenizer_path: "gpt2-xl"  # Name of hf tokenizer to load
+  model_path: "togethercomputer/GPT-JT"  # Name of hf model to load
+  tokenizer_path: "togethercomputer/GPT-JT"  # Name of hf tokenizer to load
   model_type: "AcceleratePPOModel"  # Name of accelerate model type to load
   num_layers_unfrozen: 2  # Number of bottom layers to freeze during training
 
 train:
-  seq_length: 990  # Size of LM context
+  seq_length: 1500  # Size of LM context
   epochs: 32  # Train for max(epochs, total_steps)
   total_steps: 99999999999  # Train for max(epochs, total_steps)
   batch_size: 4  # batch size
@@ -26,7 +26,7 @@ method:
   name: 'ppoconfig'  # Name of RL method config
   num_rollouts: 128  # Number of rollouts to collect per epoch
   chunk_size: 128  # Number of rollouts to collect in one loop of orchestrator
-  ppo_epochs: 2  # Number of ppo epochs
+  ppo_epochs: 1  # Number of ppo epochs
   init_kl_coef: 0.2  # init kl coefficient
   target: 6  # target kl coefficient, set None for fixed kl coef
   horizon: 10000  # PPO horizon
