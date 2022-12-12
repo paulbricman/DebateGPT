@@ -317,10 +317,8 @@ class Debate:
             return_tensors="pt",
             max_length=self.model.config.n_ctx - max_new_toks)
 
-        newline_ids = [[198], [628]]
         samples = self.model.generate(
             batch["input_ids"],
-            bad_words_ids=newline_ids,
             do_sample=True,
             top_p=0.9,
             top_k=40,

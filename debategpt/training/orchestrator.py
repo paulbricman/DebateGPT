@@ -129,11 +129,8 @@ class DebateOrchestrator(Orchestrator):
             return_tensors="pt",
             max_length= self.rl_model.config.train.seq_length - max_new_toks - 10)
 
-        bad_ids = [[198], [628]]
-
         samples = self.rl_model.generate(
             **batch,
-            bad_words_ids=bad_ids,
             do_sample=True,
             top_p=0.9,
             top_k=40,
