@@ -9,8 +9,9 @@ from trlx.orchestrator import Orchestrator
 from trlx.utils import Clock
 from trlx.utils.modeling import logprobs_from_logits
 from debategpt.training.reward import reward
-from transformers import ZeroShotClassificationPipeline
+from transformers import ZeroShotClassificationPipeline, StoppingCriteria
 import pandas as pd
+import torch
 
 
 class DebateOrchestrator(Orchestrator):
@@ -111,6 +112,15 @@ class DebateOrchestrator(Orchestrator):
 
         return debate_configs
 
+    def prefix_allow_tokens(self):
+        def func(batch_id: int, input_ids: torch.Tensor) -> List[int]:
+            last_tok = input_ids.tolist()[-1]
+            print(self.rl_model.tokenizer.decode(input_ids), last_tok)
+            if last_tok in [198, 628, 13]:
+                return [50256]
+            return list(range(50256))
+        return func
+
     def ephemeral_generate(self,
                            prompts: List[str]) -> Dict[str, Any]:
         """
@@ -119,7 +129,7 @@ class DebateOrchestrator(Orchestrator):
         Returns:
             An experience
         """
-        min_new_toks, max_new_toks = 10, 30
+        max_new_toks = 30
         self.rl_model.tokenizer.pad_token = self.rl_model.tokenizer.eos_token
         self.rl_model.tokenizer.padding_side = "left"
         batch = self.rl_model.tokenizer(
@@ -127,18 +137,19 @@ class DebateOrchestrator(Orchestrator):
             truncation=True,
             padding=True,
             return_tensors="pt",
-            max_length= self.rl_model.config.train.seq_length - max_new_toks - 10)
+            max_length= self.rl_model.config.train.seq_length - max_new_toks)
+
+        print(batch["input_ids"].size(1) + max_new_toks)
 
         samples = self.rl_model.generate(
             **batch,
             do_sample=True,
-            top_p=0.9,
-            top_k=40,
             temperature=0.7,
-            num_beams=1,
-            no_repeat_ngram_size=4,
-            min_length=batch["input_ids"].size(1) + min_new_toks,
-            max_new_tokens=max_new_toks
+            num_beams=5,
+            prefix_allowed_tokens_fn=self.prefix_allow_tokens(),
+            length_penalty=0.25,
+            max_length=batch["input_ids"].size(1) + max_new_toks,
+            min_length=0,
         )
 
         # Wrangle
@@ -262,7 +273,7 @@ class DebateOrchestrator(Orchestrator):
         prompts = [obj_header] * len(branch_idx)
 
         # Each debate runs with unique facts
-        fact_prompt = "The following is a list of concise established facts about the world, one single sentence each. They span science, humanities, and many other diverse fields:\n\n1."
+        fact_prompt = "The following is a list of concise established facts about the world, one single sentence each. They span science, humanities, and many other diverse fields:\n\n-"
         fact_prompts = [
             fact_prompt
         ] * debate_config["num_facts"] * debate_config["num_debates"]
@@ -287,3 +298,4 @@ class DebateOrchestrator(Orchestrator):
             prompts[branch_id] += "\nThe rest of this document contains a transcript of the debate in the context of the facts listed above, each brief utterance being one sentence long. This is what the parties said:\n\n"
 
         return prompts, raw_facts
+

@@ -71,7 +71,7 @@ def test_default_debate_configs(orch: DebateOrchestrator):
 
 
 def test_ephemeral_generate(orch: DebateOrchestrator):
-    prompts = ["", "Hi", "This is the last sentence of this document.\n"]
+    prompts = ["This is the first sentence of this document.\n\nThis is the second"] * 2
     experience = orch.ephemeral_generate(prompts)
 
     assert len(experience["texts"]) == len(prompts)
@@ -123,6 +123,3 @@ def test_rollout_debate(orch: DebateOrchestrator,
 
     assert len(experiences) == long_ddc["num_rounds"]
     assert len(experiences[0]) == long_ddc["num_parties"]
-
-    print(texts)
-    assert False
