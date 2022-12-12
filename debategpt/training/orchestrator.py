@@ -115,7 +115,6 @@ class DebateOrchestrator(Orchestrator):
     def prefix_allow_tokens(self):
         def func(batch_id: int, input_ids: torch.Tensor) -> List[int]:
             last_tok = input_ids.tolist()[-1]
-            print(self.rl_model.tokenizer.decode(input_ids), last_tok)
             if last_tok in [198, 628, 13]:
                 return [50256]
             return list(range(50256))
