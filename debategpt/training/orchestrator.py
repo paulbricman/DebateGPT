@@ -49,7 +49,7 @@ class DebateOrchestrator(Orchestrator):
 
         experiences, facts, texts, clock = self.rollout_debate(debate_config,
                                                                clock)
-        experiences, mixings = reward(
+        experiences, mixings, scores, props = reward(
             experiences, facts, debate_config, self.nli_pipe)
 
         for round_id in range(debate_config["num_rounds"]):
@@ -69,12 +69,12 @@ class DebateOrchestrator(Orchestrator):
 
         exp_time = clock.tick()
         stats = {
-            "exp_time": exp_time,
-            "sample_debates": pd.DataFrame(texts),
-            "sample_facts": pd.DataFrame(facts),
-            "sample_scores": experiences[0][0]["scores"][0],
+            "facts": pd.DataFrame(facts),
+            "prop_scores": pd.DataFrame(zip(props[0], scores[0])),
+            "prop_contexts": pd.DataFrame(zip(experiences[1][1]["prompts"], experiences[1][1]["texts"])),
             "assortative_mixing_avg": sum(mixings) /
-            debate_config["num_debates"]}
+            debate_config["num_debates"]
+        }
         self.rl_model.accelerator.log(stats, step=iter_count)
         self.rl_model.push_to_store(ppo_rl_elements)
 
@@ -120,6 +120,7 @@ class DebateOrchestrator(Orchestrator):
             An experience
         """
         min_new_toks, max_new_toks = 10, 30
+        self.rl_model.tokenizer.pad_token = self.rl_model.tokenizer.eos_token
         self.rl_model.tokenizer.padding_side = "left"
         batch = self.rl_model.tokenizer(
             prompts,
@@ -136,6 +137,7 @@ class DebateOrchestrator(Orchestrator):
             do_sample=True,
             top_p=0.9,
             top_k=40,
+            temperature=0.7,
             num_beams=1,
             no_repeat_ngram_size=4,
             min_length=batch["input_ids"].size(1) + min_new_toks,
@@ -197,6 +199,7 @@ class DebateOrchestrator(Orchestrator):
             "all_logprobs": all_logprobs,
             "all_values": all_values,
             "all_rewards": all_rewards,
+            "prompts": prompts,
             "texts": texts,
             "scores": [],
         }
@@ -268,7 +271,6 @@ class DebateOrchestrator(Orchestrator):
         ] * debate_config["num_facts"] * debate_config["num_debates"]
         facts = self.ephemeral_generate(fact_prompts)["texts"]
         facts = [e.split("\n")[0].strip() for e in facts]
-
 
         fact_headers = [
             facts[e * debate_config["num_facts"]:(e + 1) *

@@ -130,8 +130,8 @@ def test_sanitize_scores():
     scores = [[0.5, 0.5], [0.5, 0.5]]
     scores = sanitize_scores(props, scores)
 
-    assert all([e != -1. for e in scores[0]])
-    assert all([e == -1. for e in scores[1]])
+    assert all([e != 0 for e in scores[0]])
+    assert all([e == 0 for e in scores[1]])
 
 
 def test_compute_mixing(dummy_graphs: List[Any], ddc: Dict[str, Any]):
@@ -179,18 +179,3 @@ def test_compute_graphs(dummy_props: List[List[str]],
     assert len(graphs[0].nodes) == len(dummy_props[0]) + len(dummy_facts[0])
     assert len(graphs[0].edges) == len(dummy_props[0]) * \
         (len(dummy_props[0]) - 1) + len(dummy_props[0]) * len(dummy_facts[0])
-
-
-# def test_handholding(handholding, orch: DebateOrchestrator):
-#     ddc, facts, props = handholding
-#     graphs = compose_graphs(props, facts, ddc, orch.nli_pipe)
-#     weights = list(graphs[0].edges.data())
-#     pageranks = compute_pagerank(graphs, ddc)
-
-#     print(*facts[0], sep="\n")
-#     print()
-
-#     for pr, prop in zip(pageranks[0], props[0]):
-#         print(round(pr, 2), prop)
-
-#     assert False

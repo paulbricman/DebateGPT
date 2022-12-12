@@ -30,7 +30,7 @@ def reward(experiences: List[List[Dict[str, Any]]], facts: List[List[str]], deba
     scores = sanitize_scores(props, scores)
     mixing = compute_mixing(graphs, debate_config)
     enriched_es = enrich_experiences(experiences, scores, debate_config)
-    return enriched_es, mixing
+    return enriched_es, mixing, scores, props
 
 
 def compose_graphs(props: List[List[str]],
@@ -139,7 +139,7 @@ def sanitize_scores(props: List[List[str]], scores: List[List[float]]) -> List[L
             legal = all([word.isalpha() for word in plain.split()])
             one_period = len([e for e in prop if e == "."]) == 1
             if not one_period or not legal:
-                scores[run_id][prop_id] = -1.
+                scores[run_id][prop_id] = 0
 
     return scores
 

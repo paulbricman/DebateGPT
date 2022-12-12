@@ -322,8 +322,11 @@ class Debate:
             batch["input_ids"],
             bad_words_ids=newline_ids,
             do_sample=True,
+            top_p=0.9,
+            top_k=40,
+            temperature=0.7,
             num_beams=1,
-            no_repeat_ngram_size = 3,
+            no_repeat_ngram_size=4,
             min_length=batch["input_ids"].size(1) + min_new_toks,
             max_length=batch["input_ids"].size(1) + max_new_toks,
         )
