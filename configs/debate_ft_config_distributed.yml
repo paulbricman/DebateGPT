@@ -2,7 +2,7 @@ model:
   model_path: "togethercomputer/GPT-JT-6B-v1"  # Name of hf model to load
   tokenizer_path: "togethercomputer/GPT-JT-6B-v1"  # Name of hf tokenizer to load
   model_type: "AcceleratePPOModel"  # Name of accelerate model type to load
-  num_layers_unfrozen: 2  # Number of bottom layers to freeze during training
+  num_layers_unfrozen: 1  # Number of bottom layers to freeze during training
 
 train:
   seq_length: 1500  # Size of LM context
