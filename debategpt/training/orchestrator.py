@@ -117,7 +117,7 @@ class DebateOrchestrator(Orchestrator):
             last_tok = input_ids.tolist()[-1]
             if last_tok in [198, 628, 13]:
                 return [50256]
-            return list(range(50256))
+            return list(range(50255))
         return func
 
     def ephemeral_generate(self,
@@ -138,17 +138,13 @@ class DebateOrchestrator(Orchestrator):
             return_tensors="pt",
             max_length= self.rl_model.config.train.seq_length - max_new_toks)
 
-        print(batch["input_ids"].size(1) + max_new_toks)
-
         samples = self.rl_model.generate(
             **batch,
             do_sample=True,
-            temperature=0.7,
             num_beams=5,
             prefix_allowed_tokens_fn=self.prefix_allow_tokens(),
-            length_penalty=0.25,
-            max_length=batch["input_ids"].size(1) + max_new_toks,
-            min_length=0,
+            no_repeat_ngram_size=4,
+            max_length=batch["input_ids"].size(1) + max_new_toks
         )
 
         # Wrangle
