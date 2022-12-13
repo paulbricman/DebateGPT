@@ -141,9 +141,11 @@ class DebateOrchestrator(Orchestrator):
         samples = self.rl_model.generate(
             **batch,
             do_sample=True,
-            num_beams=5,
-            prefix_allowed_tokens_fn=self.prefix_allow_tokens(),
+            top_p=0.9,
+            top_k=40,
             no_repeat_ngram_size=4,
+            temperature=0.7,
+            prefix_allowed_tokens_fn=self.prefix_allow_tokens(),
             max_length=batch["input_ids"].size(1) + max_new_toks
         )
 
