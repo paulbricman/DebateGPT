@@ -124,8 +124,8 @@ def test_compute_pagerank(dummy_graphs: List[Any], ddc: Dict[str, Any]):
 
 
 def test_sanitize_scores():
-    legal_props = ["Hello, yes indeed!", "For sure."]
-    illegal_props = ["123", "For. sure!"]
+    legal_props = ["Hello, yes indeed it is a good idea!", "For sure, let's do it."]
+    illegal_props = ["123", "For sure!"]
     props = [legal_props, illegal_props]
     scores = [[0.5, 0.5], [0.5, 0.5]]
     scores = sanitize_scores(props, scores)
