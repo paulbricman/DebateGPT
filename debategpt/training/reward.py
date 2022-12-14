@@ -27,7 +27,7 @@ def reward(experiences: List[List[Dict[str, Any]]], facts: List[List[str]], deba
 
     graphs = compose_graphs(props, facts, debate_config, nli_pipe)
     scores = compute_pagerank(graphs, debate_config)
-    # scores = sanitize_scores(props, scores)
+    scores = sanitize_scores(props, scores)
     mixing = compute_mixing(graphs, debate_config)
     enriched_es = enrich_experiences(experiences, scores, debate_config)
     return enriched_es, mixing, scores, props

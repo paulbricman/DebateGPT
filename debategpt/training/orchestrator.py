@@ -143,8 +143,7 @@ class DebateOrchestrator(Orchestrator):
             do_sample=True,
             top_p=0.9,
             top_k=40,
-            no_repeat_ngram_size=4,
-            temperature=0.7,
+            no_repeat_ngram_size=2,
             prefix_allowed_tokens_fn=self.prefix_allow_tokens(),
             max_length=batch["input_ids"].size(1) + max_new_toks
         )
@@ -270,7 +269,7 @@ class DebateOrchestrator(Orchestrator):
         prompts = [obj_header] * len(branch_idx)
 
         # Each debate runs with unique facts
-        fact_prompt = "The following is a list of concise established facts about the world, one single sentence each. They span science, humanities, and many other diverse fields:\n\n-"
+        fact_prompt = "The following is a list of concise established facts about the world, one single sentence each. They span history, literature, mathematics, and many other diverse fields:\n\n-"
         fact_prompts = [
             fact_prompt
         ] * debate_config["num_facts"] * debate_config["num_debates"]

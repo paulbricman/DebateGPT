@@ -304,6 +304,14 @@ class Debate:
 
         return Gs
 
+    def prefix_allow_tokens(self):
+        def func(batch_id: int, input_ids: torch.Tensor) -> List[int]:
+            last_tok = input_ids.tolist()[-1]
+            if last_tok in [198, 628, 13]:
+                return [50256]
+            return list(range(50255))
+        return func
+
     def _contribute(self):
         """
         Generate a new contribution across branches.
@@ -322,10 +330,8 @@ class Debate:
             do_sample=True,
             top_p=0.9,
             top_k=40,
-            temperature=0.7,
-            num_beams=1,
-            no_repeat_ngram_size=4,
-            min_length=batch["input_ids"].size(1) + min_new_toks,
+            no_repeat_ngram_size=2,
+            prefix_allowed_tokens_fn=self.prefix_allow_tokens(),
             max_length=batch["input_ids"].size(1) + max_new_toks,
         )
 
