@@ -5,7 +5,7 @@ model:
   num_layers_unfrozen: 1  # Number of bottom layers to freeze during training
 
 train:
-  seq_length: 1500  # Size of LM context
+  seq_length: 1400  # Size of LM context
   epochs: 4  # Train for max(epochs, total_steps)
   total_steps: 99999999999  # Train for max(epochs, total_steps)
   batch_size: 4  # batch size
