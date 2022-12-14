@@ -140,6 +140,7 @@ class DebateOrchestrator(Orchestrator):
 
         samples = self.rl_model.generate(
             **batch,
+            bad_words_ids=[[198], [628]],
             do_sample=True,
             top_p=0.9,
             top_k=40,
