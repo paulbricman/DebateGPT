@@ -128,7 +128,7 @@ class DebateOrchestrator(Orchestrator):
         Returns:
             An experience
         """
-        max_new_toks = 30
+        max_new_toks = 100
         self.rl_model.tokenizer.pad_token = self.rl_model.tokenizer.eos_token
         self.rl_model.tokenizer.padding_side = "left"
         batch = self.rl_model.tokenizer(
@@ -146,7 +146,9 @@ class DebateOrchestrator(Orchestrator):
             top_k=40,
             no_repeat_ngram_size=2,
             prefix_allowed_tokens_fn=self.prefix_allow_tokens(),
-            max_length=batch["input_ids"].size(1) + max_new_toks
+            max_length=self.rl_model.config.train.seq_length,
+            exponential_decay_length_penalty=(20, 0.9),
+            renormalize_logits=True,
         )
 
         # Wrangle
@@ -286,7 +288,7 @@ class DebateOrchestrator(Orchestrator):
 
         for branch_id in branch_idx:
             if len(fact_headers[branch_id]) > 0:
-                prompts[branch_id] += f"\n\nThe list below denotes facts which have been deemed established for the purpose of the debate.\n\n"
+                prompts[branch_id] += f"\n\nThe list below denotes facts which have been deemed estar3blished for the purpose of the debate.\n\n"
                 for fact in fact_headers[branch_id]:
                     prompts[branch_id] += f"- {fact}\n"
             else:

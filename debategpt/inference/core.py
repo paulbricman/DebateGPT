@@ -316,7 +316,7 @@ class Debate:
         """
         Generate a new contribution across branches.
         """
-        min_new_toks, max_new_toks = 10, 30
+        max_new_toks = 100
         prompts = self.render()
         batch = self.tokenizer(
             prompts,
@@ -333,7 +333,9 @@ class Debate:
             top_k=40,
             no_repeat_ngram_size=2,
             prefix_allowed_tokens_fn=self.prefix_allow_tokens(),
-            max_length=batch["input_ids"].size(1) + max_new_toks,
+            max_length=self.model.config.n_ctx,
+            exponential_decay_length_penalty=(20, 0.9),
+            renormalize_logits=True,
         )
 
         query_tensors = batch.input_ids
