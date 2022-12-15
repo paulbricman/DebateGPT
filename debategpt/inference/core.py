@@ -307,7 +307,7 @@ class Debate:
     def prefix_allow_tokens(self):
         def func(batch_id: int, input_ids: torch.Tensor) -> List[int]:
             last_tok = input_ids.tolist()[-1]
-            if last_tok in [198, 628, 13, 30, 0]:
+            if last_tok in [13, 30, 0]:
                 return [50256]
             return list(range(50255))
         return func

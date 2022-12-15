@@ -115,7 +115,7 @@ class DebateOrchestrator(Orchestrator):
     def prefix_allow_tokens(self):
         def func(batch_id: int, input_ids: torch.Tensor) -> List[int]:
             last_tok = input_ids.tolist()[-1]
-            if last_tok in [198, 628, 13, 30, 0]:
+            if last_tok in [13, 30, 0]:
                 return [50256]
             return list(range(50255))
         return func
@@ -136,7 +136,7 @@ class DebateOrchestrator(Orchestrator):
             truncation=True,
             padding=True,
             return_tensors="pt",
-            max_length= self.rl_model.config.train.seq_length - max_new_toks)
+            max_length=self.rl_model.config.train.seq_length - max_new_toks)
 
         samples = self.rl_model.generate(
             **batch,
@@ -146,9 +146,9 @@ class DebateOrchestrator(Orchestrator):
             top_k=40,
             no_repeat_ngram_size=2,
             prefix_allowed_tokens_fn=self.prefix_allow_tokens(),
-            max_length=self.rl_model.config.train.seq_length,
-            exponential_decay_length_penalty=(20, 0.9),
-            renormalize_logits=True,
+            max_length=batch["input_ids"].size(1) + max_new_toks,
+            exponential_decay_length_penalty=(batch["input_ids"].size(1) + 10, 1.1),
+            renormalize_logits=True
         )
 
         # Wrangle
@@ -288,7 +288,7 @@ class DebateOrchestrator(Orchestrator):
 
         for branch_id in branch_idx:
             if len(fact_headers[branch_id]) > 0:
-                prompts[branch_id] += f"\n\nThe list below denotes facts which have been deemed estar3blished for the purpose of the debate.\n\n"
+                prompts[branch_id] += f"\n\nThe list below denotes facts which have been deemed established for the purpose of the debate.\n\n"
                 for fact in fact_headers[branch_id]:
                     prompts[branch_id] += f"- {fact}\n"
             else:

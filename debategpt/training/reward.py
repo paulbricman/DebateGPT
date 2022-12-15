@@ -4,6 +4,7 @@ import networkx as nx
 from accelerate import Accelerator
 from transformers import pipeline
 from transformers import AutoTokenizer, AutoModelForSequenceClassification, ZeroShotClassificationPipeline
+import re
 
 
 def reward(experiences: List[List[Dict[str, Any]]], facts: List[List[str]], debate_config: Dict[str, Any],
@@ -135,7 +136,7 @@ def compute_pagerank(graphs: List[nx.classes.DiGraph],
 def sanitize_scores(props: List[List[str]], scores: List[List[float]]) -> List[List[float]]:
     for run_id, run in enumerate(props):
         for prop_id, prop in enumerate(run):
-            plain = prop.replace(".", "").replace(",", "").replace("'", "").replace("!", "").replace("?", "")
+            plain = re.sub("[\.,'\!\?\-\(\)]", "", prop)
             legal = all([word.isalpha() for word in plain.split()])
             long_enough = len(plain.split()) >= 4
             one_sent = len([e for e in prop if e in [".", "!", "?"]]) == 1
