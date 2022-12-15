@@ -3,6 +3,7 @@ import string
 from copy import deepcopy
 from typing import Union, Tuple, List
 import networkx as nx
+import torch
 
 class Debate:
     def __init__(

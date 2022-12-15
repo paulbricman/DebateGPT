@@ -138,18 +138,22 @@ class DebateOrchestrator(Orchestrator):
             return_tensors="pt",
             max_length=self.rl_model.config.train.seq_length - max_new_toks)
 
-        samples = self.rl_model.generate(
-            **batch,
-            bad_words_ids=[[198], [628]],
-            do_sample=True,
-            top_p=0.9,
-            top_k=40,
-            no_repeat_ngram_size=2,
-            prefix_allowed_tokens_fn=self.prefix_allow_tokens(),
-            max_length=batch["input_ids"].size(1) + max_new_toks,
-            exponential_decay_length_penalty=(batch["input_ids"].size(1) + 10, 1.1),
-            renormalize_logits=True
-        )
+        success = False
+        while not success:
+            try:
+                samples = self.rl_model.generate(
+                    **batch,
+                    bad_words_ids=[[198], [628]],
+                    do_sample=True,
+                    top_p=0.9,
+                    top_k=40,
+                    no_repeat_ngram_size=2,
+                    prefix_allowed_tokens_fn=self.prefix_allow_tokens(),
+                    max_length=batch["input_ids"].size(1) + max_new_toks,
+                    renormalize_logits=True)
+                success = True
+            except:
+                pass
 
         # Wrangle
         query_tensors = batch.input_ids
