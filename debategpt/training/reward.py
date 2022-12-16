@@ -136,10 +136,11 @@ def compute_pagerank(graphs: List[nx.classes.DiGraph],
 def sanitize_scores(props: List[List[str]], scores: List[List[float]]) -> List[List[float]]:
     for run_id, run in enumerate(props):
         for prop_id, prop in enumerate(run):
-            plain = re.sub("[\.,'\!\?\-\(\)\:]", "", prop)
+            plain = re.sub("[\.,'\!\?\-]", "", prop)
             legal = all([word.isalpha() for word in plain.split()])
+            long_enough = len(plain.split()) > 4
             one_sent = len([e for e in prop if e in [".", "!", "?"]]) == 1
-            if not one_sent or not legal:
+            if not one_sent or not legal or not long_enough:
                 scores[run_id][prop_id] = 0
 
     return scores

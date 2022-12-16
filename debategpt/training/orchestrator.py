@@ -92,9 +92,9 @@ class DebateOrchestrator(Orchestrator):
         debate_configs = []
 
         for id in range(num_debate_config_types):
-            num_parties = random.randint(2, 5)
-            num_facts = random.randint(1, 5)
-            num_rounds = random.randint(5, 10)
+            num_parties = random.randint(2, 3)
+            num_facts = random.randint(1, 4)
+            num_rounds = random.randint(5, 8)
             objectives = (torch.normal(torch.zeros(
                 (num_parties,
                  num_parties)), torch.ones(
