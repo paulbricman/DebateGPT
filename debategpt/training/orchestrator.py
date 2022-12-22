@@ -149,7 +149,7 @@ class DebateOrchestrator(Orchestrator):
                     top_k=40,
                     no_repeat_ngram_size=2,
                     prefix_allowed_tokens_fn=self.prefix_allow_tokens(),
-                    max_length=batch["input_ids"].size(1) + max_new_toks,
+                    max_new_tokens=max_new_toks,
                     renormalize_logits=True)
                 success = True
             except:
