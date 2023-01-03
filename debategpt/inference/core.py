@@ -114,20 +114,6 @@ class Debate:
             "branch": self.sel_branch,
         }
 
-    def flattened_props(self):
-        """
-        Same as self.props(), but with objects flattened in a single list.
-        """
-        party_idx, round_idx, branch_idx  = self._sel_idx()
-        props = []
-
-        for branch_id in branch_idx:
-            for round_id in round_idx:
-                for party_id in party_idx:
-                    props += [self.prop_grid[branch_id][round_id][party_id]]
-
-        return props
-
     def props(self):
         """
         Return an object with the same structure as self.prop_grid, but with the selectors applied.
@@ -146,9 +132,23 @@ class Debate:
 
         return props
 
+    def flattened_props(self):
+        """
+        Same as self.props(), but with objects flattened in a single list.
+        """
+        party_idx, round_idx, branch_idx  = self._sel_idx()
+        props = []
+
+        for branch_id in branch_idx:
+            for round_id in round_idx:
+                for party_id in party_idx:
+                    props += [self.prop_grid[branch_id][round_id][party_id]]
+
+        return props
+
     def play(self, num_rounds: int = 1):
         """
-        Runs the debate(s) for `num_rounds` rounds. If not on fresh new round, then the result will have the same current party. Mutates in-place. Parallel debates are advanced in sync.
+        Runs the debate(s) forward for `num_rounds` rounds. The current party of the resulting object should be the same as the starting one. Mutates in-place. Parallel debates are advanced in sync.
         """
         for round_id in range(num_rounds):
             for party_id in range(self.num_parties):
@@ -189,6 +189,9 @@ class Debate:
         return transcript
 
     def render(self):
+        """
+        Helper function used to put together the prompt to be completed during one step. This includes a header with metadata and the dialogue histories for each parallel branch.
+        """
         party_idx, round_idx, branch_idx = self._sel_idx()
         obj_header = f"The table below denotes the allegiances established among the parties which took part in the debate. For instance, a high value at location (A, B) indicates that A supported B.\n\nx"
         for target_id in party_idx:
@@ -246,7 +249,7 @@ class Debate:
 
     def graph(self):
         """
-        Return argument graph for each branch.
+        Return argument graph for each branch, with propositions as nodes and weighted relations of support as arcs.
         """
         party_idx, round_idx, branch_idx = self._sel_idx()
         Gs = []
@@ -306,6 +309,9 @@ class Debate:
         return Gs
 
     def prefix_allow_tokens(self):
+        """
+        Helper function for constraining generation to roughly end on complete sentence.
+        """
         def func(batch_id: int, input_ids: torch.Tensor) -> List[int]:
             last_tok = input_ids.tolist()[-1]
             if last_tok in [13, 30, 0]:
@@ -315,7 +321,7 @@ class Debate:
 
     def _contribute(self):
         """
-        Generate a new contribution across branches.
+        Generate a new contribution across branches. For internal use. Use self.step() instead for related behavior!
         """
         max_new_toks = 100
         prompts = self.render()
