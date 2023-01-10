@@ -4,32 +4,33 @@ A custom version of [trlx.py](https://github.com/CarperAI/trlx/blob/master/trlx/
 
 
 from trlx.data.configs import TRLConfig
-from trlx.model.accelerate_ppo_model import AcceleratePPOModel
-from trlx.utils.loading import get_model
-from trlx.pipeline.offline_pipeline import PromptPipeline
+from trlx.trainer.accelerate_ppo_trainer import AcceleratePPOTrainer
+from trlx.utils.loading import get_trainer, get_pipeline
 from debategpt.training.orchestrator import DebateOrchestrator
-from transformers import AutoModelForSequenceClassification, AutoTokenizer, ZeroShotClassificationPipeline, pipeline
+from transformers import pipeline
 from accelerate import Accelerator
 
 
-def train() -> AcceleratePPOModel:
+def train() -> AcceleratePPOTrainer:
     """
     Dispatches debate fine-tuning in an online fashion through the custom orchestrator.
     """
     config = TRLConfig.load_yaml("configs/debate_ft_config.yml")
-    model: AcceleratePPOModel = get_model(config.model.model_type)(config)
+    trainer: AcceleratePPOTrainer = get_trainer(config.train.trainer)(config)
 
     nli_pipe = pipeline(
         "zero-shot-classification",
         model="cross-encoder/nli-deberta-v3-xsmall",
-        device=model.accelerator.device)
+        device=trainer.accelerator.device)
 
-    orch = DebateOrchestrator(model, nli_pipe)
+    orch = DebateOrchestrator(trainer, nli_pipe)
 
     # Two lines below are just to play nice with trlx
-    eval_pipeline = PromptPipeline([" "] * 2, model.tokenizer)
-    model.add_eval_pipeline(eval_pipeline)
+    trlx_pipeline = get_pipeline(config.train.pipeline)(
+            [" "] * 2, 1, trainer.tokenizer
+        )
+    trainer.add_eval_pipeline(trlx_pipeline)
 
     orch.make_experience(config.method.num_rollouts)
-    model.learn()
-    return model
+    trainer.learn()
+    return trainer

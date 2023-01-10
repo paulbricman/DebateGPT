@@ -1,32 +1,40 @@
 model:
   model_path: "togethercomputer/GPT-JT-6B-v1"  # Name of hf model to load
   tokenizer_path: "togethercomputer/GPT-JT-6B-v1"  # Name of hf tokenizer to load
-  model_type: "AcceleratePPOModel"  # Name of accelerate model type to load
-  num_layers_unfrozen: 1  # Number of bottom layers to freeze during training
+  num_layers_unfrozen: 2  # Number of bottom layers to freeze during training
 
 train:
-  seq_length: 1400  # Size of LM context
-  epochs: 1  # Train for max(epochs, total_steps)
-  total_steps: 99999999999  # Train for max(epochs, total_steps)
-  batch_size: 4  # batch size
-
-  lr_init: 1.0e-6  # init learning rate
-  lr_target: 1.0e-6  # target final learning rate
-  opt_betas: [0.9, 0.95] # adam betas
-  opt_eps: 1.0e-8  # adam eps
-  weight_decay: 1.0e-6  # weight decay param
+  seq_length: 1400  # Size of LM context for tok, presently overloaded
+  epochs: 8  # Highest level period (subsumes ppo_epochs passes through data)
+  total_steps: 100000000  # Train for min(this, epochs * ppo_epochs * experiences_per_epoch)
+  batch_size: 4  # batch size for updating model on ppo_epoch experiences
 
   checkpoint_interval: 10000  # checkpoint interval
-  eval_interval: 99999999999999 # eval interval, never please
+  eval_interval: 100000000 # eval interval, never used presently
 
-  pipeline: "PPOPipeline"  # prompt pipeline to load
-  orchestrator: "PPOOrchestrator"  # orchestrator to load
+  pipeline: "PromptPipeline"  # prompt pipeline to load, not used presently
+  orchestrator: "PPOOrchestrator"  # orchestrator to load, not used presently
+  trainer: "AcceleratePPOTrainer"
+
+optimizer:
+  name: "adamw"
+  kwargs:
+    lr: 1.0e-6
+    betas: [0.9, 0.95] # adam betas
+    eps: 1.0e-8  # adam eps
+    weight_decay: 1.0e-6  # weight decay param
+
+scheduler:
+  name: "cosine_annealing"
+  kwargs:
+    T_max: 100000 # train.total_steps
+    eta_min: 1.0e-7
 
 method:
   name: 'ppoconfig'  # Name of RL method config
-  num_rollouts: 128  # Number of rollouts to collect per epoch
-  chunk_size: 128  # Number of rollouts to collect in one loop of orchestrator
-  ppo_epochs: 1  # Number of ppo epochs
+  num_rollouts: 2  # Number of rollouts to collect per epoch, not used presently
+  chunk_size: 2  # Number of rollouts to collect in one loop of orchestrator, not used
+  ppo_epochs: 1 # Number of ppo epochs, passes through same experience
   init_kl_coef: 5  # init kl coefficient
   target: null  # target kl coefficient, set None for fixed kl coef
   horizon: 10000  # PPO horizon

@@ -6,8 +6,8 @@ from debategpt.training.reward import compute_pagerank, compute_mixing, enrich_e
 from debategpt.training.orchestrator import DebateOrchestrator
 from trlx.utils import Clock
 from trlx.data.configs import TRLConfig
-from trlx.model.accelerate_ppo_model import AcceleratePPOModel
-from trlx.utils.loading import get_model
+from trlx.trainer.accelerate_ppo_trainer import AcceleratePPOTrainer
+from trlx.utils.loading import get_trainer
 from transformers import AutoModelForSequenceClassification, AutoTokenizer, ZeroShotClassificationPipeline, pipeline
 
 
@@ -53,13 +53,13 @@ def ddc():
 @pytest.fixture
 def orch():
     config = TRLConfig.load_yaml("../configs/debate_ft_config.yml")
-    model: AcceleratePPOModel = get_model(config.model.model_type)(config)
+    trainer: AcceleratePPOTrainer = get_trainer(config.train.trainer)(config)
     nli_pipe = pipeline(
         "zero-shot-classification",
         model="cross-encoder/nli-deberta-v3-small",
-        device=model.accelerator.device)
+        device=trainer.accelerator.device)
 
-    orch = DebateOrchestrator(model, nli_pipe)
+    orch = DebateOrchestrator(trainer, nli_pipe)
     return orch
 
 

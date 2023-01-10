@@ -5,8 +5,8 @@ from typing import Any, Dict
 
 from debategpt.training.orchestrator import DebateOrchestrator
 from trlx.data.configs import TRLConfig
-from trlx.model.accelerate_ppo_model import AcceleratePPOModel
-from trlx.utils.loading import get_model
+from trlx.trainer.accelerate_ppo_trainer import AcceleratePPOTrainer
+from trlx.utils.loading import get_trainer
 from trlx.utils import Clock
 from transformers import AutoModelForSequenceClassification, AutoTokenizer, ZeroShotClassificationPipeline, pipeline
 from accelerate import Accelerator
@@ -15,7 +15,7 @@ from accelerate import Accelerator
 @pytest.fixture
 def orch():
     config = TRLConfig.load_yaml("../configs/debate_ft_config.yml")
-    model: AcceleratePPOModel = get_model(config.model.model_type)(config)
+    trainer: AcceleratePPOTrainer = get_trainer(config.train.trainer)(config)
     nli_model = AutoModelForSequenceClassification.from_pretrained(
         'cross-encoder/nli-deberta-v3-xsmall')
     nli_tok = AutoTokenizer.from_pretrained(
@@ -24,9 +24,9 @@ def orch():
         "zero-shot-classification",
         model=nli_model,
         tokenizer=nli_tok,
-        device=model.accelerator.device)
+        device=trainer.accelerator.device)
 
-    orch = DebateOrchestrator(model, nli_pipe)
+    orch = DebateOrchestrator(trainer, nli_pipe)
     return orch
 
 
@@ -76,7 +76,7 @@ def test_ephemeral_generate(orch: DebateOrchestrator):
 
     assert len(experience["texts"]) == len(prompts)
     assert experience["response_tensors"].size(0) == len(prompts)
-    assert experience["all_rewards"].size(1) > 1
+    assert experience["all_rewards"][0].size(0) > 1
     assert experience["all_rewards"][0][-1].tolist() == 0.0, "Early KL somehow non-zero"
 
 
@@ -86,7 +86,7 @@ def test_long_ephemeral_generate(orch: DebateOrchestrator):
 
     assert len(experience["texts"]) == len(prompts)
     assert experience["response_tensors"].size(0) == len(prompts)
-    assert experience["all_rewards"].size(1) > 1
+    assert experience["all_rewards"][0].size(0) > 1
     assert experience["all_rewards"][0][-1].tolist() == 0.0, "Early KL somehow non-zero"
 
 
@@ -106,19 +106,17 @@ def test_rollout_debate(orch: DebateOrchestrator,
     experience = experiences[0][0]
 
     assert experience["response_tensors"].size(0) == short_ddc["num_debates"]
-    assert experience["all_rewards"].size(1) > 1
+    assert experience["all_rewards"][0].size(0) > 1
     assert experience["all_rewards"][0][-1].tolist() == 0.0, "Early KL somehow non-zero"
 
     assert len(experiences) == short_ddc["num_rounds"]
     assert len(experiences[0]) == short_ddc["num_parties"]
 
-    print(texts)
-
     experiences, facts, texts, clock = orch.rollout_debate(long_ddc, clock)
     experience = experiences[0][0]
 
     assert experience["response_tensors"].size(0) == long_ddc["num_debates"]
-    assert experience["all_rewards"].size(1) > 1
+    assert experience["all_rewards"][0].size(0) > 1
     assert experience["all_rewards"][0][-1].tolist() == 0.0, "Early KL somehow non-zero"
 
     assert len(experiences) == long_ddc["num_rounds"]
