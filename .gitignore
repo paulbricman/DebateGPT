@@ -165,3 +165,4 @@ src/training/wandb/
 src/wandb/
 src/training/ckpts/
 wandb/
+ckpts/

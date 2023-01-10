@@ -139,8 +139,9 @@ def sanitize_scores(props: List[List[str]], scores: List[List[float]]) -> List[L
             plain = re.sub("[\.,'\!\?\-]", "", prop)
             legal = all([word.isalpha() for word in plain.split()])
             long_enough = len(plain.split()) > 4
+            start_capital = long_enough and plain.strip()[0].isupper()
             one_sent = len([e for e in prop if e in [".", "!", "?"]]) == 1
-            if not one_sent or not legal or not long_enough:
+            if not one_sent or not legal or not long_enough or not start_capital:
                 scores[run_id][prop_id] = 0
 
     return scores
