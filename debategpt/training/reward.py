@@ -93,7 +93,8 @@ def compute_arc_weights(
         for outbound_id in range(num_items_per_debate):
             for inbound_id in range(num_items_per_debate):
                 if outbound_id != inbound_id and inbound_id < num_props_per_debate:
-                    ref_in_id = run_scores[outbound_id]["labels"].index(run_items[inbound_id])
+                    ref_in_id = run_scores[outbound_id]["labels"].index(
+                        run_items[inbound_id])
 
                     run_weights += [(outbound_id, inbound_id,
                                      round(run_scores[outbound_id]["scores"][ref_in_id], 2))]
@@ -133,10 +134,11 @@ def compute_pagerank(graphs: List[nx.classes.DiGraph],
     return scores
 
 
-def sanitize_scores(props: List[List[str]], scores: List[List[float]]) -> List[List[float]]:
+def sanitize_scores(props: List[List[str]],
+                    scores: List[List[float]]) -> List[List[float]]:
     for run_id, run in enumerate(props):
         for prop_id, prop in enumerate(run):
-            plain = re.sub("[\.,'\!\?\-]", "", prop)
+            plain = re.sub("[\\.,'\\!\\?\\-]", "", prop)
             legal = all([word.isalpha() for word in plain.split()])
             long_enough = len(plain.split()) > 4
             start_capital = long_enough and plain.strip()[0].isupper()

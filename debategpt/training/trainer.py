@@ -27,8 +27,8 @@ def train() -> AcceleratePPOTrainer:
 
     # Two lines below are just to play nice with trlx
     trlx_pipeline = get_pipeline(config.train.pipeline)(
-            [" "] * 2, 1, trainer.tokenizer
-        )
+        [" "] * 2, 1, trainer.tokenizer
+    )
     trainer.add_eval_pipeline(trlx_pipeline)
 
     orch.make_experience(config.method.num_rollouts)

@@ -1,11 +1,8 @@
 from setuptools import find_packages, setup
 
-with open('requirements.txt') as f:
-    requirements = f.read().splitlines()
-
 setup(
     name="debategpt",
-    version="0.0.2",
+    version="0.0.4",
     description="Train and use DebateGPT, a language model designed to simulate debates.",
     author="paulbricman",
     author_email="paulbricman@protonmail.com",
@@ -16,6 +13,7 @@ setup(
         "torch",
         "sentencepiece",
         "protobuf==3.20.0",
+        "scipy==1.9.3",
     ],
     dependency_links=[
         "https://download.pytorch.org/whl/cpu",

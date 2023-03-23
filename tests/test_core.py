@@ -32,7 +32,7 @@ def test_branch_sel(debate: Debate):
     assert debate.sel_branch is None
     sel = debate.branch(0)
     assert sel.sel_branch == 0
-    sel.num_branches = 5  # test workaround
+    debate.num_branches = 5  # test workaround
     sel = debate.branch([0, 1])
     assert sel.sel_branch == [0, 1]
     sel = debate.branch(None)

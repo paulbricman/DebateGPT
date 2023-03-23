@@ -4,7 +4,7 @@ import wandb
 
 def main():
     model = trainer.train()
-    model.save("ckpts")
+    model.save_pretrained("ckpts")
 
 
 if __name__ == "__main__":

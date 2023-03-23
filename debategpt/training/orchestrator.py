@@ -18,6 +18,7 @@ class DebateOrchestrator(Orchestrator):
     """
     Orchestrator generates debate experience, packages them up in PPORLElements, and pushes them to the store.
     """
+
     def __init__(self, trainer: BaseRLTrainer,
                  nli_pipe: ZeroShotClassificationPipeline):
         self.trainer = trainer
@@ -96,12 +97,12 @@ class DebateOrchestrator(Orchestrator):
         for id in range(num_debate_config_types):
             num_parties = random.randint(2, 4)
             num_facts = random.randint(1, 3)
-            num_rounds = random.randint(3, 6)
+            num_rounds = random.randint(3, 5)
             objectives = (torch.normal(torch.zeros(
                 (num_parties,
                  num_parties)), torch.ones(
                      (num_parties, num_parties))) * 0.25 +
-                          torch.eye(num_parties)).tolist()
+                torch.eye(num_parties)).tolist()
             objectives = [[round(e, 2) for e in f] for f in objectives]
 
             debate_configs += [{
@@ -130,7 +131,7 @@ class DebateOrchestrator(Orchestrator):
         Returns:
             An experience
         """
-        max_new_toks = 100
+        max_new_toks = 30
         self.trainer.tokenizer.pad_token = self.trainer.tokenizer.eos_token
         self.trainer.tokenizer.padding_side = "left"
         batch = self.trainer.tokenizer(
@@ -154,16 +155,16 @@ class DebateOrchestrator(Orchestrator):
                     max_new_tokens=max_new_toks,
                     renormalize_logits=True)
                 success = True
-            except:
+            except BaseException:
                 pass
 
         # Wrangle
         query_tensors = batch.input_ids
         response_tensors = samples[:, query_tensors.shape[1]:]
         texts = self.trainer.tokenizer.batch_decode(samples,
-                                                     skip_special_tokens=True)
-        response_texts = self.trainer.tokenizer.batch_decode(response_tensors,
                                                     skip_special_tokens=True)
+        response_texts = self.trainer.tokenizer.batch_decode(
+            response_tensors, skip_special_tokens=True)
 
         all_tokens = torch.cat(
             (query_tensors.to(response_tensors.device), response_tensors),
@@ -175,7 +176,8 @@ class DebateOrchestrator(Orchestrator):
                 all_tokens,
                 attention_mask=attention_mask,
             )
-            # TODO(dahoas): When hydra model works need to also support generation on hydra head
+            # TODO(dahoas): When hydra model works need to also support
+            # generation on hydra head
             if hasattr(self.trainer.model, "frozen_head"):
                 ref_logits = self.trainer.model.forward_hydra(
                     all_tokens,

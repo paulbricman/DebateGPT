@@ -5,6 +5,7 @@ from typing import Union, Tuple, List
 import networkx as nx
 import torch
 
+
 class Debate:
     def __init__(
             self,
@@ -95,10 +96,10 @@ class Debate:
         assert isinstance(branch_id, (int, list, type(
             None))), "Branch selector should be either an int (i.e. one branch id) or a list of ints (i.e. multiple branch ids)."
         if isinstance(branch_id, int):
-            assert branch_id < self.num_parties and branch_id >= 0, f"Current debate only has {self.num_branches} (zero-indexed) branches. You asked for branch {branch_id}, which is unavailable."
+            assert branch_id < self.num_branches and branch_id >= 0, f"Current debate only has {self.num_branches} (zero-indexed) branches. You asked for branch {branch_id}, which is unavailable."
         elif isinstance(branch_id, list):
             for branch_idx in branch_id:
-                assert branch_idx < self.num_parties and branch_idx >= 0, f"Current debate only has {self.num_branches} (zero-indexed) branches. You asked for branch {branch_idx}, which is unavailable."
+                assert branch_idx < self.num_branches and branch_idx >= 0, f"Current debate only has {self.num_branches} (zero-indexed) branches. You asked for branch {branch_idx}, which is unavailable."
 
         clone = self._clone()
         clone.sel_branch = branch_id
@@ -118,7 +119,7 @@ class Debate:
         """
         Return an object with the same structure as self.prop_grid, but with the selectors applied.
         """
-        party_idx, round_idx, branch_idx  = self._sel_idx()
+        party_idx, round_idx, branch_idx = self._sel_idx()
         props = []
 
         for branch_id in branch_idx:
@@ -136,7 +137,7 @@ class Debate:
         """
         Same as self.props(), but with objects flattened in a single list.
         """
-        party_idx, round_idx, branch_idx  = self._sel_idx()
+        party_idx, round_idx, branch_idx = self._sel_idx()
         props = []
 
         for branch_id in branch_idx:
@@ -238,12 +239,6 @@ class Debate:
         if not branch:
             for branch_id in range(self.num_branches):
                 self.facts[branch_id] += facts
-                print(
-                    "fail should pass through this",
-                    branch_id,
-                    branch,
-                    self.num_branches,
-                    self.facts[branch_id])
         else:
             self.facts[branch] += facts
 
@@ -285,7 +280,8 @@ class Debate:
             nx.set_node_attributes(G, item_round, "round")
 
             weighted_edges = []
-            run_items = self.branch(branch_id).flattened_props() + self.facts[branch_id]
+            run_items = self.branch(
+                branch_id).flattened_props() + self.facts[branch_id]
             run_items = [e if e != "" else "?" for e in run_items]
             run_scores = self.nli_pipe(
                 run_items,
@@ -297,9 +293,11 @@ class Debate:
             for outbound_id in range(num_items):
                 for inbound_id in range(num_items):
                     if outbound_id != inbound_id and inbound_id < num_props:
-                        ref_in_id = run_scores[outbound_id]["labels"].index(run_items[inbound_id])
-                        run_weights += [(outbound_id, inbound_id,
-                                         round(run_scores[outbound_id]["scores"][ref_in_id], 2))]
+                        ref_in_id = run_scores[outbound_id]["labels"].index(
+                            run_items[inbound_id])
+                        run_weights += [
+                            (outbound_id, inbound_id, round(
+                                run_scores[outbound_id]["scores"][ref_in_id], 2))]
 
             G.add_weighted_edges_from(run_weights)
             pageranks = nx.pagerank(G)
@@ -348,7 +346,7 @@ class Debate:
         query_tensors = batch.input_ids
         response_tensors = samples[:, query_tensors.shape[1]:]
         props = self.tokenizer.batch_decode(response_tensors,
-                                                     skip_special_tokens=True)
+                                            skip_special_tokens=True)
 
         return props
 
@@ -356,7 +354,10 @@ class Debate:
         """
         Creates a mostly-deep copy of the current Debate object. The more heavy-weight models and the associated tokenizers are shallow-copied.
         """
-        d = Debate(model=self.model, tokenizer=self.tokenizer, nli_pipe=self.nli_pipe)
+        d = Debate(
+            model=self.model,
+            tokenizer=self.tokenizer,
+            nli_pipe=self.nli_pipe)
         for k, v in self.__dict__.items():
             d.__setattr__(k, v)
         return d
@@ -366,13 +367,13 @@ class Debate:
         Return lists of indices based on current selection (as opposed to having a range).
         """
         party_idx = self.sel_party
-        if self.sel_party == None:
+        if self.sel_party is None:
             party_idx = list(range(self.num_parties))
         elif isinstance(self.sel_party, int):
             party_idx = [party_idx]
 
         round_idx = self.sel_round
-        if self.sel_round == None:
+        if self.sel_round is None:
             round_idx = list(range(self.curr_round))
         elif isinstance(self.sel_round, tuple):
             round_idx = list(range(*self.sel_round))
@@ -380,7 +381,7 @@ class Debate:
             round_idx = [round_idx]
 
         branch_idx = self.sel_branch
-        if self.sel_branch == None:
+        if self.sel_branch is None:
             branch_idx = list(range(self.num_branches))
         elif isinstance(self.sel_branch, int):
             branch_idx = [branch_idx]
@@ -412,11 +413,19 @@ def distance(d1: Union[Debate, str], d2: Union[Debate, str]):
         nli_pipe = d2.nli_pipe
     else:
         nli_pipe = pipeline(
-                "zero-shot-classification",
-                model="cross-encoder/nli-deberta-v3-xsmall")
+            "zero-shot-classification",
+            model="cross-encoder/nli-deberta-v3-xsmall")
 
-    scores1 = nli_pipe(props1, props2, multi_label=True, hypothesis_template="{}")
-    scores2 = nli_pipe(props2, props1, multi_label=True, hypothesis_template="{}")
+    scores1 = nli_pipe(
+        props1,
+        props2,
+        multi_label=True,
+        hypothesis_template="{}")
+    scores2 = nli_pipe(
+        props2,
+        props1,
+        multi_label=True,
+        hypothesis_template="{}")
     scores = [e["scores"] for e in scores1] + [e["scores"] for e in scores2]
     scores = [e for f in scores for e in f]
     score = sum(scores) / len(scores)
