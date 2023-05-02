@@ -176,7 +176,7 @@ class Debate:
         Loads in complete transcript to be evaluated via ArgRank
         """
 
-        arguments = transcript.split("\n")
+        arguments = transcript.split("\n\n\n")
         first_party = arguments[0].split(": ")[0]
         num_party = 1
         while arguments[num_party].split(": ")[0] != first_party:
