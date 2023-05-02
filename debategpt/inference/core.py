@@ -171,6 +171,36 @@ class Debate:
                 for branch_id in range(self.num_branches):
                     self.prop_grid[branch_id] += [[]]
 
+    def load(self, transcript):
+        """
+        Loads in complete transcript to be evaluated via ArgRank
+        """
+
+        arguments = transcript.split("\n")
+        first_party = arguments[0].split(": ")[0]
+        num_party = 1
+        while arguments[num_party].split(": ")[0] != first_party:
+            num_party += 1
+        num_rounds = len(arguments) / num_party
+        self.num_parties = num_party
+        self.curr_party = 0
+        self.curr_round = 0
+        self.num_branches = 1
+        self.prop_grid = [[]]
+        round_args = []
+        for arg in arguments:
+            round_args.append(arg.split(": ", 1)[1])
+            self.curr_party += 1
+            if(self.curr_party == self.num_parties):
+                self.curr_party = 0
+                self.prop_grid[0].append(round_args)
+                self.curr_round += 1
+                round_args = []
+        
+
+            
+
+
     def transcript(self):
         """
         Generate debate transcript of selection for human debugging.
