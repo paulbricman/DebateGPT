@@ -172,11 +172,11 @@ class Debate:
                     self.prop_grid[branch_id] += [[]]
 
     def load(self, transcript):
+        """ 
+        Loads in complete transcript to be evaluated via ArgRank 
         """
-        Loads in complete transcript to be evaluated via ArgRank
-        """
-
-        arguments = transcript.split("\n\n\n")
+        
+        arguments = transcript.split("\n\n")
         first_party = arguments[0].split(": ")[0]
         num_party = 1
         while arguments[num_party].split(": ")[0] != first_party:
@@ -189,17 +189,13 @@ class Debate:
         self.prop_grid = [[]]
         round_args = []
         for arg in arguments:
-            round_args.append(arg.split(": ", 1)[1])
+            round_args.append(arg.split(": ", 1)[1].strip())
             self.curr_party += 1
             if(self.curr_party == self.num_parties):
                 self.curr_party = 0
                 self.prop_grid[0].append(round_args)
                 self.curr_round += 1
                 round_args = []
-        
-
-            
-
 
     def transcript(self):
         """
