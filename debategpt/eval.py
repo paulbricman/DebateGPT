@@ -1,6 +1,6 @@
 from inference.core import Debate
 
-def evaluate(model1, model2, num_rounds: int = 4, num_branches: int = 2):
+def evaluate(model1, model2, num_rounds: int = 4, num_branches: int = 1):
     """
     Evaluates the debate capabilities of two models against each other
     """
@@ -13,7 +13,6 @@ def evaluate(model1, model2, num_rounds: int = 4, num_branches: int = 2):
         d1.curr_round = round
         d2.curr_round = round
         d1.step()
-        # print(d2.prop_grid)
         for branch in range(num_branches):
             d2.prop_grid[branch][round].append(d1.prop_grid[branch][round][0])
         d2.curr_party = 1
@@ -37,5 +36,4 @@ def evaluate(model1, model2, num_rounds: int = 4, num_branches: int = 2):
 
     return result
 
-print(evaluate("distilgpt2","distilgpt2"))
 
