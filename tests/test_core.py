@@ -171,3 +171,37 @@ def test_graph(debate: Debate):
 
     assert all([e["weight"] <= 1. and e["weight"] >= 0. for e in weights])
     assert G.nodes[0]["score"] <= 1.
+
+# test transcript loading with example transcript
+def test_load(debate: Debate):
+    debate.load(transcript='''A: I think we should buy gifts for everyone this Christmas. 
+
+B: We can't afford to buy gifts for everyone! 
+
+A: I know, but it's the thought that counts. 
+
+B: Maybe we could make something instead? 
+
+A: That would take too long, it's already December. 
+
+B: We could start now and make something special. 
+
+A: Sure, but if we have the money, why not just buy something? 
+
+B: We don't have enough money for that. 
+
+A: Maybe we could go in with someone else on a gift? 
+
+B: That's a great idea! We could pool our resources and get everyone something nice.
+
+A: Okay, let's do it!
+''')
+    assert debate.num_branches == 1
+    assert debate.num_parties == 2
+    assert debate.prop_grid[0][0][0] == 'I think we should buy gifts for everyone this Christmas.' 
+    Gs = debate.graph()
+    G = Gs[0]
+    assert G.nodes[0]["party"] == 0
+    assert G.nodes[1]["party"] == 1
+    assert G.nodes[2]["round"] == 1
+    
