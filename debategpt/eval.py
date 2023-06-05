@@ -65,4 +65,33 @@ def isValid(prop):
         return False
     return True
 
-print(evaluate("distilgpt2", "distilgpt2", num_branches=2))
+# print(evaluate("distilgpt2", "distilgpt2", num_branches=2))
+
+def elo_rank(models, num_rounds: int = 4, num_branches: int = 1):
+    elo = {}
+    kfactor = 32 
+    scale_factor = 400 
+    exponent_base = 10
+    initial_rating = 1000 
+    for model in models:
+        elo[model] = initial_rating
+    for i in range(0, len(models)):
+        for j in range(i+1, len(models)):
+            model1 = models[i]
+            model2 = models[j]
+            res = evaluate(model1, model2, num_rounds=num_rounds, num_branches=num_branches)
+            for r in res['sanitized']:
+                ea = 1 / (1 + exponent_base ** ((elo[model2] - elo[model1]) / scale_factor))
+                eb = 1 / (1 + exponent_base ** ((elo[model1] - elo[model2]) / scale_factor))
+                if r[0] > r[1]:
+                    # model1 win
+                    sa = 1
+                elif r[0] < r[1]:
+                    # model2 win
+                    sa = 0
+                else:
+                    #tie
+                    sa = 0.5
+                elo[model1] += kfactor*(sa-ea)
+                elo[model2] += kfactor*(1-sa-eb)
+    return elo
