@@ -18,6 +18,9 @@ def evaluate(model1, model2, num_rounds: int = 4, num_branches: int = 1):
             d2.prop_grid[branch][round].append(d1.prop_grid[branch][round][0])
         d2.curr_party = 1
         d2.step()
+        if round == num_rounds-1:
+            for branch in range(num_branches):
+                d2.prop_grid[branch]=d2.prop_grid[branch][:-1]
         for branch in range(num_branches):
             d1.prop_grid[branch][round].append(d2.prop_grid[branch][round][1])
             if round != num_rounds-1:
@@ -48,8 +51,9 @@ def evaluate(model1, model2, num_rounds: int = 4, num_branches: int = 1):
                 d2_score += node["score"]
         result.append([d1_score, d2_score])
         if(valid_d1 + valid_d2 > 0):
-            sanitized_d1_score /= sanitized_d1_score+sanitized_d2_score
+            temp = sanitized_d1_score/(sanitized_d1_score+sanitized_d2_score)
             sanitized_d2_score /= sanitized_d1_score+sanitized_d2_score
+            sanitized_d1_score = temp
         sanitized_result.append([sanitized_d1_score, sanitized_d2_score])
 
     return {'raw':result, 'sanitized':sanitized_result}
@@ -95,3 +99,6 @@ def elo_rank(models, num_rounds: int = 4, num_branches: int = 1):
                 elo[model1] += kfactor*(sa-ea)
                 elo[model2] += kfactor*(1-sa-eb)
     return elo
+
+# test with smaller models distilgpt, gpt2
+print(elo_rank(['distilgpt2', 'gpt2', 'gpt2-medium']))
