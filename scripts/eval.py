@@ -1,5 +1,6 @@
-from inference.core import Debate
+from debategpt.inference.core import Debate
 import re
+
 
 def evaluate(model1, model2, num_rounds: int = 4, num_branches: int = 1):
     """
@@ -38,7 +39,7 @@ def evaluate(model1, model2, num_rounds: int = 4, num_branches: int = 1):
         for i in range(len(br_graph.nodes)):
             node = br_graph.nodes[i]
             # removing scores for invalid props may make sum less than one
-            if(isValid(node["content"])):
+            if(is_valid(node["content"])):
                 if node["party"] == 0:
                     sanitized_d1_score += node["score"]
                     valid_d1 += 1
@@ -59,7 +60,7 @@ def evaluate(model1, model2, num_rounds: int = 4, num_branches: int = 1):
     return {'raw':result, 'sanitized':sanitized_result}
 
 
-def isValid(prop):
+def is_valid(prop):
     plain = re.sub("[\\.,'\\!\\?\\-]", "", prop)
     legal = all([word.isalpha() for word in plain.split()])
     long_enough = len(plain.split()) > 4
@@ -69,14 +70,13 @@ def isValid(prop):
         return False
     return True
 
-# print(evaluate("distilgpt2", "distilgpt2", num_branches=2))
 
 def elo_rank(models, num_rounds: int = 4, num_branches: int = 1):
     elo = {}
-    kfactor = 32 
-    scale_factor = 400 
+    kfactor = 32
+    scale_factor = 400
     exponent_base = 10
-    initial_rating = 1000 
+    initial_rating = 1000
     for model in models:
         elo[model] = initial_rating
     for i in range(0, len(models)):
@@ -99,6 +99,3 @@ def elo_rank(models, num_rounds: int = 4, num_branches: int = 1):
                 elo[model1] += kfactor*(sa-ea)
                 elo[model2] += kfactor*(1-sa-eb)
     return elo
-
-# test with smaller models distilgpt, gpt2
-print(elo_rank(['distilgpt2', 'gpt2', 'gpt2-medium']))
