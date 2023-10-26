@@ -2,7 +2,7 @@
 
 Implementation of the initial [_ArgRank_](https://compphil.github.io/truth/#argrank) and [_DebateGPT_](https://compphil.github.io/truth/#obtaining-debategpt) prototypes, used in [the experiments](https://compphil.github.io/truth/#benchmarking-argranks-dependencies) conducted during [AI Safety Camp 8](https://aisafety.camp/).
 
-This repo has been made public almost a year from [the initial commit](https://github.com/paulbricman/DebateGPT/commit/b2728f2b06b5ac69dd5527658b8e502838f79e41), time during which its attentional hazardousness has decreased with the _ChatGPT_ craze. For up-to-date information on follow-up work, please refer to the homepage of [the broader research agenda](https://paulbricman.com/defensibility/).
+This repo has been made public almost a year from [the initial commit](https://github.com/paulbricman/DebateGPT/commit/b2728f2b06b5ac69dd5527658b8e502838f79e41), time during which its attentional hazardousness has decreased with the launch of _ChatGPT_. For up-to-date information on follow-up work, please refer to the homepage of [the broader research agenda](https://paulbricman.com/defensibility/).
 
 ## Inference primitives
 
