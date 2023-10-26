@@ -53,5 +53,5 @@ G = sel1.graph
 
 - `debategpt.training.orchestrator` manages high-level transcript generation, populates the experience store, and handles weight updates.
 - `debategpt.training.reward` implements [_ArgRank_](https://compphil.github.io/truth/#argrank) and helps evaluate generated transcripts.
-- `debategpt.training.trainer` gets the two elements above to work in concert.
-- `scripts/train.py` minimally wraps the trainer above with default settings.
+- `debategpt.training.trainer` gets the two above elements to work in concert.
+- `scripts/train.py` minimally wraps the trainer with default settings.
